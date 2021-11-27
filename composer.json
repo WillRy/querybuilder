@@ -1,0 +1,26 @@
+{
+  "name": "willry/querybuilder",
+  "description": "Um query builder simples e fácil de usar, abstraindo a utilização do PDO de forma produtiva e segura com filtragem dos dados.",
+  "license": "MIT",
+  "keywords": [
+    "Query Builder",
+    "ORM",
+    "Active Record",
+    "Database",
+    "PHP"
+  ],
+  "authors": [
+    {
+      "name": "Willry",
+      "email": "wiribasczky@gmail.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Willry\\QueryBuilder\\": "src/"
+    }
+  },
+  "require": {
+    "ext-pdo": "*"
+  }
+}
