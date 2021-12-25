@@ -229,6 +229,32 @@ abstract class Query
         return $this;
     }
 
+    public function joinSub(Query $subquery, string $alias, $condition)
+    {
+        if (!empty($this->joins)) {
+            $this->joins .= PHP_EOL;
+        }
+        $this->joins .= "INNER JOIN ({$subquery->toSQL()}) AS $alias ON $condition";
+        return $this;
+    }
+
+    public function leftJoinSub(Query $subquery, string $alias, $condition)
+    {
+        if (!empty($this->joins)) {
+            $this->joins .= PHP_EOL;
+        }
+        $this->joins .= "LEFT JOIN ({$subquery->toSQL()}) AS $alias ON $condition";
+        return $this;
+    }
+
+    public function rightJoinSub(Query $subquery, string $alias, $condition)
+    {
+        if (!empty($this->joins)) {
+            $this->joins .= PHP_EOL;
+        }
+        $this->joins .= "RIGHT JOIN ({$subquery->toSQL()}) AS $alias ON $condition";
+        return $this;
+    }
 
     public function get(): ?array
     {
@@ -261,6 +287,20 @@ abstract class Query
             }
 
             return $stmt->fetchObject();
+        } catch (\PDOException $exception) {
+            return $this->handleError($exception);
+        }
+    }
+
+    public function count(): ?int
+    {
+        $this->mountQuery();
+
+        try {
+            $stmt = Connect::getInstance()->prepare($this->query);
+            $stmt->execute($this->filter($this->params));
+
+            return $stmt->rowCount();
         } catch (\PDOException $exception) {
             return $this->handleError($exception);
         }
@@ -353,16 +393,7 @@ abstract class Query
 
     private function mountQuery(): void
     {
-        $this->query = <<<QUERY
-        SELECT 
-            $this->columns 
-        FROM $this->entity
-        $this->joins
-        $this->where
-        $this->groupBy 
-        $this->having 
-        $this->order $this->limit
-        QUERY;
+        $this->query = "SELECT $this->columns FROM $this->entity $this->joins $this->where $this->groupBy $this->having $this->order $this->limit $this->offset";
     }
 
     /**
@@ -390,5 +421,11 @@ abstract class Query
             ]
         );
         exit;
+    }
+
+    public function toSQL()
+    {
+        $this->mountQuery();
+        return $this->query;
     }
 }
