@@ -13,10 +13,11 @@ produtiva e segura com filtragem dos dados.
 
 ## Instalação
 
-O query builder **EM BREVE** estará disponível via composer:
+A instalação pode ser feita via composer:
 
-Por enquanto, pode ser baixado e usado normalmente, com sua própria personalização de autoload
-nas classes DB, Connect e Query
+```
+composer require willry/querybuilder
+```
 
 ## Documentação
 
