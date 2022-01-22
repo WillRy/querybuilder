@@ -316,7 +316,7 @@ abstract class Query
             $stmt->execute($this->filter($this->finalParams()));
 
             if (!$stmt->rowCount()) {
-                return null;
+                return [];
             }
 
             return $stmt->fetchAll(\PDO::FETCH_CLASS);
@@ -484,7 +484,7 @@ abstract class Query
     {
         $result = [];
         foreach ($this->params as $key => $param) {
-            if(is_array($param)) {
+            if (is_array($param)) {
                 $result[$key] = implode(",", $param);
             } else {
                 $result[$key] = $param;

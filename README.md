@@ -126,7 +126,7 @@ var_dump($dinamico->get());
  */
 $dinamico = DB::table("users as u")
     ->selectRaw("u.id, u.first_name, u.email")
-    ->whereIn("u.id",[1,2,3,4,5])
+    ->whereIn("u.id", [1, 2, 3, 4, 5])
     ->get();
 var_dump($dinamico);
 
@@ -149,7 +149,6 @@ $delete = DB::table("users as u")
 var_dump($delete);
 
 
-
 /**
  * Create
  */
@@ -158,7 +157,6 @@ $create = DB::table("users")
         "email" => "fulano" . time() . "@fulano.com"
     ]);
 var_dump($create);
-
 
 
 /**
