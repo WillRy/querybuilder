@@ -91,6 +91,14 @@ if ($filtroId) {
 }
 var_dump($dinamico);
 
+/** Where in */
+$dinamico = DB::table("users as u")
+    ->selectRaw("u.id, u.first_name, u.email")
+    ->whereIn("u.id",[1,2,3,4,5])
+    ->params([
+        "num" => 50
+    ]);
+var_dump($dinamico);
 
 /**
  * UPDATE

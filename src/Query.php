@@ -88,15 +88,17 @@ abstract class Query
      * @param string $columns
      * @return $this
      */
-    public function selectRaw(string $columns = "*"): Query
+    public function selectRaw(string $columns = "*", array $params = []): Query
     {
         $this->columns = $columns;
+        $this->params($params);
         return $this;
     }
 
-    public function select(array $columns = ["*"]): Query
+    public function select(array $columns = ["*"], array $params = []): Query
     {
         $this->columns = implode(",", $columns);
+        $this->params($params);
         return $this;
     }
 
@@ -104,8 +106,10 @@ abstract class Query
      * @param string $where
      * @return $this
      */
-    public function where(string $where): Query
+    public function where(string $where, array $params = []): Query
     {
+        $this->params($params);
+
         if (!empty($this->where)) {
             $this->where .= " AND {$where}";
             return $this;
@@ -119,14 +123,54 @@ abstract class Query
      * @param string $where
      * @return $this
      */
-    public function orWhere(string $where): Query
+    public function orWhere(string $where, array $params = []): Query
     {
+        $this->params($params);
+
         if (!empty($this->where)) {
             $this->where .= " OR {$where}";
             return $this;
         }
 
         $this->where = "WHERE $where";
+        return $this;
+    }
+
+    public function whereIn(string $column, array $data): Query
+    {
+        $inQuery = implode(',', array_fill(0, count($data), '?'));
+
+        foreach ($data as $key => $d) {
+            $this->params([
+                $key => $d
+            ]);
+        }
+
+        if (!empty($this->where)) {
+            $this->where .= " AND {$column} IN ($inQuery)";
+            return $this;
+        }
+
+        $this->where = "WHERE {$column} IN ($inQuery)";
+        return $this;
+    }
+
+    public function orWhereIn(string $column, array $data): Query
+    {
+        $inQuery = implode(',', array_fill(0, count($data), '?'));
+
+        foreach ($data as $key => $d) {
+            $this->params([
+                $key => $d
+            ]);
+        }
+
+        if (!empty($this->where)) {
+            $this->where .= " OR {$column} IN ($inQuery)";
+            return $this;
+        }
+
+        $this->where = "WHERE {$column} IN ($inQuery)";
         return $this;
     }
 
@@ -185,7 +229,8 @@ abstract class Query
      */
     public function params(array $params = []): Query
     {
-        $this->params = $params;
+        $this->params = array_merge($this->params, $params);
+
         return $this;
     }
 
@@ -193,8 +238,10 @@ abstract class Query
      * @param string $join
      * @return $this
      */
-    public function leftJoin(string $join): Query
+    public function leftJoin(string $join, array $params = []): Query
     {
+        $this->params($params);
+
         if (!empty($this->joins)) {
             $this->joins .= PHP_EOL;
         }
@@ -206,8 +253,10 @@ abstract class Query
      * @param string $join
      * @return $this
      */
-    public function rightJoin(string $join): Query
+    public function rightJoin(string $join, array $params = []): Query
     {
+        $this->params($params);
+
         if (!empty($this->joins)) {
             $this->joins .= PHP_EOL;
         }
@@ -220,8 +269,10 @@ abstract class Query
      * @param string $join
      * @return $this
      */
-    public function join(string $join): Query
+    public function join(string $join, array $params = []): Query
     {
+        $this->params($params);
+
         if (!empty($this->joins)) {
             $this->joins .= PHP_EOL;
         }
@@ -262,7 +313,7 @@ abstract class Query
 
         try {
             $stmt = Connect::getInstance()->prepare($this->query);
-            $stmt->execute($this->filter($this->params));
+            $stmt->execute($this->filter($this->finalParams()));
 
             if (!$stmt->rowCount()) {
                 return null;
@@ -280,7 +331,7 @@ abstract class Query
 
         try {
             $stmt = Connect::getInstance()->prepare($this->query);
-            $stmt->execute($this->filter($this->params));
+            $stmt->execute($this->filter($this->finalParams()));
 
             if (!$stmt->rowCount()) {
                 return null;
@@ -298,7 +349,7 @@ abstract class Query
 
         try {
             $stmt = Connect::getInstance()->prepare($this->query);
-            $stmt->execute($this->filter($this->params));
+            $stmt->execute($this->filter($this->finalParams()));
 
             return $stmt->rowCount();
         } catch (\PDOException $exception) {
@@ -327,7 +378,7 @@ abstract class Query
     }
 
     /**
-     * @param array[] $data
+     * @param array $data
      */
     public function update(array $data): ?int
     {
@@ -339,7 +390,7 @@ abstract class Query
             $dateSet = implode(", ", $dateSet);
 
             $stmt = Connect::getInstance()->prepare("UPDATE {$this->entity} SET {$dateSet} {$this->where}");
-            $stmt->execute($this->filter(array_merge($data, $this->params)));
+            $stmt->execute($this->filter(array_merge($data, $this->finalParams())));
             return $stmt->rowCount() ?? 1;
         } catch (\PDOException $exception) {
             return $this->handleError($exception);
@@ -350,7 +401,7 @@ abstract class Query
     {
         try {
             $stmt = Connect::getInstance()->prepare("DELETE FROM {$this->entity} {$this->where}");
-            $stmt->execute($this->filter($this->params));
+            $stmt->execute($this->filter($this->finalParams()));
             return $stmt->rowCount() ?? 1;
         } catch (\PDOException $exception) {
             return $this->handleError($exception);
@@ -416,8 +467,8 @@ abstract class Query
         var_dump(
             [
                 "query" => $this->query,
-                "raw_params" => $this->params,
-                "filtered_params" => $this->filter($this->params)
+                "raw_params" => $this->params(),
+                "filtered_params" => $this->filter($this->finalParams())
             ]
         );
         exit;
@@ -427,5 +478,18 @@ abstract class Query
     {
         $this->mountQuery();
         return $this->query;
+    }
+
+    public function finalParams()
+    {
+        $result = [];
+        foreach ($this->params as $key => $param) {
+            if(is_array($param)) {
+                $result[$key] = implode(",", $param);
+            } else {
+                $result[$key] = $param;
+            }
+        }
+        return $result;
     }
 }
