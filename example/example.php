@@ -14,27 +14,37 @@ use Willry\QueryBuilder\Model;
  */
 $dados = DB::table("users as u")
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
-    ->where("id >= :num")
+    ->where("id <= :num", ["num" => 5])
     ->where("email is not null")
-    ->params([
-        "num" => 1
-    ])
     ->order("id ASC")
     ->get();
 var_dump($dados);
+
 
 /**
  * Leitura de dados basicos(único resultado)
  */
 $dados = DB::table("users as u")
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
-    ->where("id >= :num")
+    ->where("id <= :num", ["num" => 5])
     ->where("email is not null")
-    ->params([
-        "num" => 1
-    ])
     ->order("id ASC")
     ->first();
+var_dump($dados);
+
+
+/**
+ * Leitura de dados com parametros via metodo: ->params()
+ */
+$dados = DB::table("users as u")
+    ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
+    ->where("id <= :num")
+    ->where("email is not null")
+    ->order("id ASC")
+    ->params([
+        ":num" => 5
+    ])
+    ->get();
 var_dump($dados);
 
 
@@ -46,18 +56,15 @@ var_dump($dados);
  */
 $join = DB::table("users as u")
     ->selectRaw("u.id, u.first_name, u.email, ad.name as address")
-    ->where("u.id >= :num")
-    ->leftJoin("address AS ad ON ad.user_id = u.id")
-    ->params([
-        "num" => 1
-    ])
+    ->leftJoin("address AS ad ON ad.user_id = u.id AND ad.name LIKE :name", ["name" => '%a%'])
+    ->limit(3)
     ->get();
 var_dump($join);
 
 
 /**
  * Join com subquery
- * 
+ *
  * joinSub
  * leftJoinSub
  * rightJoinSub
@@ -70,44 +77,36 @@ $users = DB::table("users as u")
     ->selectRaw("u.id as usuario, sub.name as rua")
     ->leftJoinSub($address, 'sub', "sub.user_id = u.id")
     ->get();
-
+var_dump($users);
 
 
 /**
  * Condições dinamicas(where de acordo com a necessidade)
  */
-$dinamico = DB::table("users as u")
-    ->selectRaw("u.id, u.first_name, u.email, sub.pay_status")
-    ->join("app_subscriptions as sub ON sub.user_id = u.id")
-    ->join("app_subscriptions as sub2 ON sub2.user_id = u.id")
-    ->params([
-        "num" => 50
-    ]);
+$dinamico = DB::table("users as u")->select(["u.id", "u.first_name", "u.email"]);
 
-$filtroId = 50;
+$filtroId = 5;
 
-if ($filtroId) {
-    $dinamico->where("u.id > :num");
+if (!empty($filtroId)) {
+    $dinamico->where("u.id <= :num", ['num' => $filtroId]);
 }
-var_dump($dinamico);
+var_dump($dinamico->get());
 
-/** Where in */
+
+/**
+ * WHERE IN
+ */
 $dinamico = DB::table("users as u")
     ->selectRaw("u.id, u.first_name, u.email")
     ->whereIn("u.id",[1,2,3,4,5])
-    ->params([
-        "num" => 50
-    ]);
+    ->get();
 var_dump($dinamico);
 
 /**
  * UPDATE
  */
 $update = DB::table("users as u")
-    ->where("id = :num")
-    ->params([
-        "num" => 53
-    ])
+    ->where("id = :num", ['num' => 53])
     ->update([
         "email" => "fulano@fulano.com"
     ]);
@@ -117,10 +116,7 @@ var_dump($update);
  * DELETE
  */
 $delete = DB::table("users as u")
-    ->where("id > :num")
-    ->params([
-        "num" => 56
-    ])
+    ->where("id > :num", ['num' => 56])
     ->delete();
 var_dump($delete);
 
@@ -133,7 +129,7 @@ $create = DB::table("users")
     ->create([
         "email" => "fulano" . time() . "@fulano.com"
     ]);
-
+var_dump($create);
 
 
 
@@ -200,17 +196,17 @@ var_dump($result);
  */
 
 $sql = DB::table("users as u")
-->select([
-    "u.id",
-    "count(ao.id) as qtd"
-])
-->join("app_orders as ao ON ao.user_id = u.id")
-->groupBy(["u.id"])
-->having("count(ao.id) > :qtd")
-->params([
-    "qtd" => 1
-])
-->toSQL();
+    ->select([
+        "u.id",
+        "count(ao.id) as qtd"
+    ])
+    ->join("app_orders as ao ON ao.user_id = u.id")
+    ->groupBy(["u.id"])
+    ->having("count(ao.id) > :qtd")
+    ->params([
+        "qtd" => 1
+    ])
+    ->toSQL();
 var_dump($sql);
 
 DB::table("users as u")
