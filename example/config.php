@@ -1,6 +1,6 @@
-<?php 
+<?php
 
-define("CONF_PDO_OPT",[
+define("CONF_PDO_OPT", [
     \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
     \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_OBJ,
     \PDO::ATTR_CASE => \PDO::CASE_NATURAL

@@ -3,6 +3,7 @@
 namespace Willry\QueryBuilder;
 
 use Exception;
+use PDOStatement;
 use stdClass;
 
 abstract class Query
@@ -189,7 +190,8 @@ abstract class Query
      */
     public function limit(int $limit): Query
     {
-        $this->limit = "LIMIT {$limit}";
+        $this->limit = "LIMIT :limit";
+        $this->params(['limit' => $limit]);
         return $this;
     }
 
@@ -199,7 +201,8 @@ abstract class Query
      */
     public function offset(int $offset): Query
     {
-        $this->offset = "OFFSET {$offset}";
+        $this->offset = "OFFSET :offset";
+        $this->params(['offset' => $offset]);
         return $this;
     }
 
@@ -313,7 +316,8 @@ abstract class Query
 
         try {
             $stmt = Connect::getInstance()->prepare($this->query);
-            $stmt->execute($this->filter($this->finalParams()));
+            $this->bind($stmt);
+            $stmt->execute();
 
             if (!$stmt->rowCount()) {
                 return [];
@@ -331,7 +335,8 @@ abstract class Query
 
         try {
             $stmt = Connect::getInstance()->prepare($this->query);
-            $stmt->execute($this->filter($this->finalParams()));
+            $this->bind($stmt);
+            $stmt->execute();
 
             if (!$stmt->rowCount()) {
                 return null;
@@ -349,7 +354,8 @@ abstract class Query
 
         try {
             $stmt = Connect::getInstance()->prepare($this->query);
-            $stmt->execute($this->filter($this->finalParams()));
+            $this->bind($stmt);
+            $stmt->execute();
 
             return $stmt->rowCount();
         } catch (\PDOException $exception) {
@@ -369,7 +375,8 @@ abstract class Query
             $values = ":" . implode(", :", array_keys($data));
 
             $stmt = Connect::getInstance()->prepare("INSERT INTO {$this->entity} ({$columns}) VALUES ({$values})");
-            $stmt->execute($this->filter($data));
+            $this->bind($stmt);
+            $stmt->execute();
 
             return Connect::getInstance()->lastInsertId();
         } catch (\PDOException $exception) {
@@ -390,7 +397,13 @@ abstract class Query
             $dateSet = implode(", ", $dateSet);
 
             $stmt = Connect::getInstance()->prepare("UPDATE {$this->entity} SET {$dateSet} {$this->where}");
-            $stmt->execute($this->filter(array_merge($data, $this->finalParams())));
+
+            $this->params($data);
+
+            $this->bind($stmt);
+
+            $stmt->execute();
+
             return $stmt->rowCount() ?? 1;
         } catch (\PDOException $exception) {
             return $this->handleError($exception);
@@ -401,7 +414,8 @@ abstract class Query
     {
         try {
             $stmt = Connect::getInstance()->prepare("DELETE FROM {$this->entity} {$this->where}");
-            $stmt->execute($this->filter($this->finalParams()));
+            $this->bind($stmt);
+            $stmt->execute();
             return $stmt->rowCount() ?? 1;
         } catch (\PDOException $exception) {
             return $this->handleError($exception);
@@ -444,6 +458,7 @@ abstract class Query
 
     private function mountQuery(): void
     {
+
         $this->query = "SELECT $this->columns FROM $this->entity $this->joins $this->where $this->groupBy $this->having $this->order $this->limit $this->offset";
     }
 
@@ -491,5 +506,21 @@ abstract class Query
             }
         }
         return $result;
+    }
+
+    public function bind(PDOStatement &$stmt)
+    {
+        $binds = $this->filter($this->finalParams());
+
+        foreach($binds as $key => $bind) {
+            if($key == 'limit' || $key == "offset") {
+                $stmt->bindValue(":$key", $bind, \PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue(":$key", $bind);
+            }
+
+        }
+
+        return $bind;
     }
 }
