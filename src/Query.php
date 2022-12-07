@@ -139,39 +139,51 @@ abstract class Query
 
     public function whereIn(string $column, array $data): Query
     {
-        $inQuery = implode(',', array_fill(0, count($data), '?'));
+        $columnUppercase = ucfirst($column);
 
-        foreach ($data as $key => $d) {
+        $inPlaceHolder = [];
+        foreach ($data as $d) {
+            $paramNum = count($this->params) + 1;
+            $paramName = "in{$columnUppercase}{$paramNum}";
+            $inPlaceHolder[] = ":{$paramName}";
             $this->params([
-                $key => $d
+                $paramName => $d
             ]);
         }
 
+        $inString = implode(",", $inPlaceHolder);
+
         if (!empty($this->where)) {
-            $this->where .= " AND {$column} IN ($inQuery)";
+            $this->where .= " AND {$column} IN ($inString)";
             return $this;
         }
 
-        $this->where = "WHERE {$column} IN ($inQuery)";
+        $this->where = "WHERE {$column} IN ($inString)";
         return $this;
     }
 
     public function orWhereIn(string $column, array $data): Query
     {
-        $inQuery = implode(',', array_fill(0, count($data), '?'));
+        $columnUppercase = ucfirst($column);
 
-        foreach ($data as $key => $d) {
+        $inPlaceHolder = [];
+        foreach ($data as $d) {
+            $paramNum = count($this->params) + 1;
+            $paramName = "in{$columnUppercase}{$paramNum}";
+            $inPlaceHolder[] = ":{$paramName}";
             $this->params([
-                $key => $d
+                $paramName => $d
             ]);
         }
 
+        $inString = implode(",", $inPlaceHolder);
+
         if (!empty($this->where)) {
-            $this->where .= " OR {$column} IN ($inQuery)";
+            $this->where .= " OR {$column} IN ($inString)";
             return $this;
         }
 
-        $this->where = "WHERE {$column} IN ($inQuery)";
+        $this->where = "WHERE {$column} IN ($inString)";
         return $this;
     }
 
@@ -181,7 +193,8 @@ abstract class Query
      */
     public function order(string $columnOrder): Query
     {
-        $this->order = "ORDER BY {$columnOrder}";
+        $this->order = "ORDER BY :order";
+        $this->params(['order' => $columnOrder]);
         return $this;
     }
 
@@ -212,7 +225,11 @@ abstract class Query
      */
     public function groupBy(array $group): Query
     {
-        $this->groupBy = "GROUP BY " . implode(", ", $group);
+        $groupBind = implode(',', array_fill(0, count($group), '?'));
+        foreach ($group as $key => $g) {
+            $this->params(["group_{$key}" => $g]);
+        }
+        $this->groupBy = "GROUP BY $groupBind";
         return $this;
     }
 
@@ -512,13 +529,12 @@ abstract class Query
     {
         $binds = $this->filter($this->finalParams());
 
-        foreach($binds as $key => $bind) {
-            if($key == 'limit' || $key == "offset") {
+        foreach ($binds as $key => $bind) {
+            if ($key == 'limit' || $key == "offset") {
                 $stmt->bindValue(":$key", $bind, \PDO::PARAM_INT);
             } else {
                 $stmt->bindValue(":$key", $bind);
             }
-
         }
 
         return $bind;
