@@ -512,6 +512,28 @@ abstract class Query
         return $this->query;
     }
 
+    public static function dynamicQueryFilters(array &$queryParams, string $queryString, array $bind)
+    {
+        $queryParams["filters"][] = $queryString;
+        $queryParams["binds"] = !empty($queryParams["binds"]) ? array_merge($queryParams["binds"], $bind) : $bind;
+
+        $queryString = "";
+
+        if (empty($queryParams["filters"])) return "";
+
+        foreach ($queryParams["filters"] as $key => $filtro) {
+            if ($key === 0) {
+                $queryString .= $filtro;
+            } else {
+                $queryString .= " AND {$filtro}";
+            }
+        }
+
+        $queryParams["queryString"] = $queryString;
+
+        return $filtro;
+    }
+
     public function finalParams()
     {
         $result = [];

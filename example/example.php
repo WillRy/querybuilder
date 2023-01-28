@@ -8,6 +8,7 @@ require_once __DIR__ . "/config.php";
 use Willry\QueryBuilder\Connect;
 use Willry\QueryBuilder\DB;
 use Willry\QueryBuilder\Model;
+use Willry\QueryBuilder\Query;
 
 /**
  * Leitura de dados basicos(multiplos resultados)
@@ -139,7 +140,7 @@ class User extends Model
     /**
      * opcional (identifica automatico pelo nome da model em ingles no plural)
      */
-    //public $table = "users";
+    public $table = "users";
 
 
     /**
@@ -219,3 +220,31 @@ DB::table("users as u")
         "qtd" => 1
     ])
     ->dump();
+
+
+/**
+ * Create Dynamic SQL filters,
+ * generating query string and array with bind params
+ */
+
+$urlFilter = $_GET['filter'] ?? null;
+
+$filtersArrReference = [];
+
+Query::dynamicQueryFilters($filtersArrReference, 'ID = :ID', ['ID' => 1]);
+
+if($urlFilter) {
+    Query::dynamicQueryFilters($filtersArrReference, 'FILTER = :FILTER', ['FILTER' => "%$urlFilter%"]);
+}
+
+
+$sql = DB::table("users as u")
+    ->select([
+        "u.id",
+        "u.name"
+    ])
+    ->where($filtersArrReference['queryString'])
+    ->params($filtersArrReference['binds'])
+    ->toSQL();
+
+var_dump($sql);
