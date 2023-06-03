@@ -7,7 +7,6 @@ require_once __DIR__ . "/config.php";
 
 use Willry\QueryBuilder\Connect;
 use Willry\QueryBuilder\DB;
-use Willry\QueryBuilder\Model;
 use Willry\QueryBuilder\Query;
 
 /**
@@ -43,7 +42,7 @@ $dados = DB::table("users as u")
     ->where("email is not null")
     ->order("id ASC")
     ->params([
-        ":num" => 5
+        "num" => 5
     ])
     ->get();
 var_dump($dados);
@@ -80,6 +79,15 @@ $users = DB::table("users as u")
     ->get();
 var_dump($users);
 
+/**
+ * Selecionar de uma subquery
+ *
+ * Select * from (select * from users) as sub
+ */
+$dados = DB::fromSub(function (Query $query) {
+    return $query->from("users")->limit(10);
+}, 'sub')->get();
+var_dump($dados);
 
 /**
  * Condições dinamicas(where de acordo com a necessidade)
@@ -130,41 +138,6 @@ $create = DB::table("users")
         "email" => "fulano" . time() . "@fulano.com"
     ]);
 var_dump($create);
-
-
-/**
- * Camada de models
- */
-class User extends Model
-{
-    /**
-     * opcional (identifica automatico pelo nome da model em ingles no plural)
-     */
-    public $table = "users";
-
-
-    /**
-     * Lista com instancia pré configurada herdada da Model
-     * @param int $limit
-     * @param int $offset
-     * @return array|null
-     */
-    public function list($limit = 10, $offset = 0)
-    {
-        return $this->db->select(["id", "first_name", "email", "status"])->limit($limit)->offset($offset)->get();
-    }
-
-    /**
-     * Lista com Query builder diretamente
-     * @param int $limit
-     * @param int $offset
-     * @return array|null
-     */
-    public function listAll()
-    {
-        return DB::table($this->table)->select(["id", "first_name", "email", "status"])->get();
-    }
-}
 
 
 /**
@@ -233,7 +206,7 @@ $filtersArrReference = [];
 
 Query::dynamicQueryFilters($filtersArrReference, 'ID = :ID', ['ID' => 1]);
 
-if($urlFilter) {
+if ($urlFilter) {
     Query::dynamicQueryFilters($filtersArrReference, 'FILTER = :FILTER', ['FILTER' => "%$urlFilter%"]);
 }
 

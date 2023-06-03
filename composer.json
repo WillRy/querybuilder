@@ -5,9 +5,9 @@
   "keywords": [
     "Query Builder",
     "ORM",
-    "Active Record",
     "Database",
-    "PHP"
+    "PHP",
+    "PDO"
   ],
   "authors": [
     {

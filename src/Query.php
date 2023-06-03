@@ -25,9 +25,9 @@ abstract class Query
     protected $entity;
 
     /**
-     * @var string
+     * @var array
      */
-    protected $columns = "*";
+    protected $columns = [];
 
     /**
      * @var string
@@ -75,15 +75,23 @@ abstract class Query
     protected $having;
 
 
-    /**
-     * @param string $entity
-     * @param bool $silentErrors
-     */
-    public function __construct(string $entity, bool $silentErrors = false)
+    public function from(string $entity)
     {
         $this->entity = $entity;
+        return $this;
+    }
+
+    public function setSilentErrors(bool $silentErrors = false)
+    {
         $this->silentErrors = $silentErrors;
     }
+
+    public function fromSubQuery(Query $query, string $alias = 'sub')
+    {
+        $this->entity = "(" . $query->toSQL() . ") as $alias";
+        return $this;
+    }
+
 
     /**
      * @param string $columns
@@ -91,14 +99,16 @@ abstract class Query
      */
     public function selectRaw(string $columns = "*", array $params = []): Query
     {
-        $this->columns = $columns;
+        $this->columns = array_merge($this->columns, explode(',', $columns));
         $this->params($params);
         return $this;
     }
 
-    public function select(array $columns = ["*"], array $params = []): Query
+    public function select(array $columns = [], array $params = []): Query
     {
-        $this->columns = implode(",", $columns);
+        $columns = empty($columns) ? ['*'] : $columns;
+
+        $this->columns = array_merge($this->columns, $columns);
         $this->params($params);
         return $this;
     }
@@ -139,12 +149,10 @@ abstract class Query
 
     public function whereIn(string $column, array $data): Query
     {
-        $columnUppercase = ucfirst($column);
-
         $inPlaceHolder = [];
         foreach ($data as $d) {
             $paramNum = count($this->params) + 1;
-            $paramName = "in{$columnUppercase}{$paramNum}";
+            $paramName = "in{$paramNum}";
             $inPlaceHolder[] = ":{$paramName}";
             $this->params([
                 $paramName => $d
@@ -154,11 +162,11 @@ abstract class Query
         $inString = implode(",", $inPlaceHolder);
 
         if (!empty($this->where)) {
-            $this->where .= " AND {$column} IN ($inString)";
+            $this->where .= " AND {$column} IN ({$inString})";
             return $this;
         }
 
-        $this->where = "WHERE {$column} IN ($inString)";
+        $this->where = "WHERE {$column} IN ({$inString})";
         return $this;
     }
 
@@ -476,7 +484,9 @@ abstract class Query
     private function mountQuery(): void
     {
 
-        $this->query = "SELECT $this->columns FROM $this->entity $this->joins $this->where $this->groupBy $this->having $this->order $this->limit $this->offset";
+        $columns = !empty($this->columns) ? $this->columns : ['*'];
+        $columns = implode(',', $columns);
+        $this->query = "SELECT $columns FROM $this->entity $this->joins $this->where $this->groupBy $this->having $this->order $this->limit $this->offset";
     }
 
     /**
@@ -531,7 +541,7 @@ abstract class Query
 
         $queryParams["queryString"] = $queryString;
 
-        return $filtro;
+        return $queryParams;
     }
 
     public function finalParams()
@@ -559,6 +569,6 @@ abstract class Query
             }
         }
 
-        return $bind;
+        return $binds;
     }
 }
