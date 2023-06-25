@@ -1,8 +1,7 @@
 # Query Builder
 
-Um query builder simples e fácil de usar, abstraindo a utilização do PDO de forma
-produtiva e segura com filtragem dos dados.
-
+Um query builder simples e fácil de usar, abstraindo a utilização do PDO de forma produtiva e segura com filtragem dos
+dados.
 
 ### Recursos
 
@@ -21,14 +20,15 @@ composer require willry/querybuilder
 
 ## Documentação
 
-Para mais detalhes sobre como usar, veja uma pasta de exemplo no diretório do componente. Nela terá um exemplo de uso para cada classe. Ele funciona assim:
+Para mais detalhes sobre como usar, veja uma pasta de exemplo no diretório do componente. Nela terá um exemplo de uso
+para cada classe. Ele funciona assim:
 
 #### Utilização:
 
 ```php
 <?php
 
-require_once __DIR__ . "/vendor/autoload.php";
+require_once __DIR__ . "/../vendor/autoload.php";
 
 //connection config file
 require_once __DIR__ . "/config.php";
@@ -38,7 +38,48 @@ use Willry\QueryBuilder\DB;
 use Willry\QueryBuilder\Query;
 
 /**
- * Leitura de dados basicos(multiplos resultados)
+ * Informar um array onde a chave é o nome da conexão
+ * e dentro vai os dados da conexão para o PDO
+ */
+$connections = [
+    'default' => [
+        "driver" => "mysql",
+        "host" => "127.0.0.1",
+        "port" => "3306",
+        "dbname" => "fullstackphp",
+        "username" => "root",
+        "passwd" => "root",
+        "options" => [
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+            PDO::ATTR_CASE => PDO::CASE_NATURAL
+        ]
+    ],
+    'banco_teste' => [
+        "driver" => "mysql",
+        "host" => "127.0.0.1",
+        "port" => "3306",
+        "dbname" => "teste",
+        "username" => "root",
+        "passwd" => "root",
+        "options" => [
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+            PDO::ATTR_CASE => PDO::CASE_NATURAL
+        ]
+    ],
+];
+
+/**
+ * @important
+ *
+ * Aqui injeta as configurações
+ */
+Connect::config($connections);
+/**
+ * Leitura de dados basicos(trazer multiplos resultados)
  */
 $dados = DB::table("users as u")
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
@@ -46,11 +87,10 @@ $dados = DB::table("users as u")
     ->where("email is not null")
     ->order("id ASC")
     ->get();
-var_dump($dados);
 
 
 /**
- * Leitura de dados basicos(único resultado)
+ * Leitura de dados basicos(trazer único resultado)
  */
 $dados = DB::table("users as u")
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
@@ -61,10 +101,26 @@ $dados = DB::table("users as u")
 var_dump($dados);
 
 
+
 /**
  * Leitura de dados com parametros via metodo: ->params()
  */
 $dados = DB::table("users as u")
+    ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
+    ->where("id <= :num")
+    ->where("email is not null")
+    ->order("id ASC")
+    ->params([
+        "num" => 5
+    ])
+    ->get();
+var_dump($dados);
+
+/**
+ * Escolher a conexão de banco de dados
+ */
+$nomeConexao = 'default';
+$dados = DB::table("users as u", $nomeConexao)
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
     ->where("id <= :num")
     ->where("email is not null")
@@ -83,8 +139,8 @@ var_dump($dados);
  * rightJoin()
  */
 $join = DB::table("users as u")
-    ->selectRaw("u.id, u.first_name, u.email, ad.name as address")
-    ->leftJoin("address AS ad ON ad.user_id = u.id AND ad.name LIKE :name", ["name" => '%a%'])
+    ->selectRaw("u.id, u.first_name, u.email, ad.street as address")
+    ->leftJoin("address AS ad ON ad.user_id = u.id AND ad.street LIKE :name", ["name" => '%a%'])
     ->limit(3)
     ->get();
 var_dump($join);
@@ -99,10 +155,10 @@ var_dump($join);
  */
 
 /** objeto de query builder, sem executar(->get(), ->first())*/
-$address = DB::table("address")->where("name is not null");
+$address = DB::table("address")->where("street is not null");
 
 $users = DB::table("users as u")
-    ->selectRaw("u.id as usuario, sub.name as rua")
+    ->selectRaw("u.id as usuario, sub.street as rua")
     ->leftJoinSub($address, 'sub', "sub.user_id = u.id")
     ->get();
 var_dump($users);
@@ -163,6 +219,8 @@ var_dump($delete);
  */
 $create = DB::table("users")
     ->create([
+        'first_name' => 'fulano',
+        'last_name' => 'qualquer' . time(),
         "email" => "fulano" . time() . "@fulano.com"
     ]);
 var_dump($create);
@@ -175,12 +233,9 @@ $stmt = Connect::getInstance()->prepare('
             select
                 u.id,
                 u.first_name,
-                GROUP_CONCAT(distinct CONCAT_WS(";", p.id, p.`number`) SEPARATOR "|") as numeros,
-                GROUP_CONCAT(distinct CONCAT_WS(";", a.id, a.name) SEPARATOR "|") as enderecos
+                GROUP_CONCAT(distinct CONCAT_WS(";", a.id, a.street) SEPARATOR "|") as enderecos
             from
                 users u
-            left join phone p on
-                p.user_id = u.id
             left join address a on
                 a.user_id = u.id
             group by
@@ -250,28 +305,43 @@ $sql = DB::table("users as u")
 
 var_dump($sql);
 
+
 ```
 
 ### Configuração
 
-Por padrão, é recomendado a utilização da configuração
+Por padrão, é recomendado a utilização da configuração neste modelo
 
 ```php
-define("CONF_PDO_OPT",[
-    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, // pdo lançar exceptions
-    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_OBJ, // faz resultados virem como classes stdClass
-    \PDO::ATTR_CASE => \PDO::CASE_NATURAL
-]);
+$connections = [
+    'default' => [
+        "driver" => "mysql",
+        "host" => "127.0.0.1",
+        "port" => "3306",
+        "dbname" => "fullstackphp",
+        "username" => "root",
+        "passwd" => "root",
+        "options" => [
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+            PDO::ATTR_CASE => PDO::CASE_NATURAL
+        ]
+    ]
+];
+
+/**
+ * @important
+ *
+ * Aqui injeta as configurações
+ */
+\Willry\QueryBuilder\Connect::config($connections);
 ```
 
-## Contribuição
-
-Veja [CONTRIBUTING](https://github.com/willry/querybuilder/blob/master/CONTRIBUTING.md) para mais detalhes.
 
 ## Suporte
 
 Se você descobrir algum problema relacionado à segurança, entre em contato.
-
 
 ## Licença
 

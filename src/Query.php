@@ -74,6 +74,22 @@ abstract class Query
      */
     protected $having;
 
+    /**
+     * @var \PDO|null
+     */
+    protected $db;
+
+    /**
+     * @var array|null
+     */
+    protected $connectionConfig;
+
+    public function __construct(string $connectionName = 'default', bool $regenerateConnection = false)
+    {
+        $this->db = Connect::getInstance($connectionName, $regenerateConnection);
+        $this->connectionConfig = Connect::getConfig($connectionName);
+    }
+
 
     public function from(string $entity)
     {
@@ -340,7 +356,7 @@ abstract class Query
         $this->mountQuery();
 
         try {
-            $stmt = Connect::getInstance()->prepare($this->query);
+            $stmt = $this->db->prepare($this->query);
             $this->bind($stmt);
             $stmt->execute();
 
@@ -359,7 +375,7 @@ abstract class Query
         $this->mountQuery();
 
         try {
-            $stmt = Connect::getInstance()->prepare($this->query);
+            $stmt = $this->db->prepare($this->query);
             $this->bind($stmt);
             $stmt->execute();
 
@@ -378,7 +394,7 @@ abstract class Query
         $this->mountQuery();
 
         try {
-            $stmt = Connect::getInstance()->prepare($this->query);
+            $stmt = $this->db->prepare($this->query);
             $this->bind($stmt);
             $stmt->execute();
 
@@ -399,11 +415,14 @@ abstract class Query
             $columns = implode(", ", array_keys($data));
             $values = ":" . implode(", :", array_keys($data));
 
-            $stmt = Connect::getInstance()->prepare("INSERT INTO {$this->entity} ({$columns}) VALUES ({$values})");
+            $stmt = $this->db->prepare("INSERT INTO {$this->entity} ({$columns}) VALUES ({$values})");
+            $this->params($data);
+
             $this->bind($stmt);
+
             $stmt->execute();
 
-            return Connect::getInstance()->lastInsertId();
+            return $this->db->lastInsertId();
         } catch (\PDOException $exception) {
             return $this->handleError($exception);
         }
@@ -421,7 +440,7 @@ abstract class Query
             }
             $dateSet = implode(", ", $dateSet);
 
-            $stmt = Connect::getInstance()->prepare("UPDATE {$this->entity} SET {$dateSet} {$this->where}");
+            $stmt = $this->db->prepare("UPDATE {$this->entity} SET {$dateSet} {$this->where}");
 
             $this->params($data);
 
@@ -438,7 +457,7 @@ abstract class Query
     public function delete(): ?int
     {
         try {
-            $stmt = Connect::getInstance()->prepare("DELETE FROM {$this->entity} {$this->where}");
+            $stmt = $this->db->prepare("DELETE FROM {$this->entity} {$this->where}");
             $this->bind($stmt);
             $stmt->execute();
             return $stmt->rowCount() ?? 1;
@@ -448,21 +467,21 @@ abstract class Query
     }
 
 
-    public static function beginTransaction(): bool
+    public function beginTransaction(): bool
     {
-        return Connect::getInstance()->beginTransaction();
+        return $this->db->beginTransaction();
     }
 
 
-    public static function commit(): bool
+    public function commit(): bool
     {
-        return Connect::getInstance()->commit();
+        return $this->db->commit();
     }
 
 
-    public static function rollback(): bool
+    public function rollback(): bool
     {
-        return Connect::getInstance()->rollBack();
+        return $this->db->rollBack();
     }
 
     /**
@@ -570,5 +589,10 @@ abstract class Query
         }
 
         return $binds;
+    }
+
+    public function getConnection()
+    {
+        return Connect::getInstance($this->connectionName);
     }
 }

@@ -7,15 +7,14 @@ namespace Willry\QueryBuilder;
  */
 class Connect
 {
-    /**
-     * @const array
-     */
-    private const OPTIONS = CONF_PDO_OPT;
 
-    /**
-     * @var \PDO
-     */
+    /** @var array */
     private static $instance;
+
+    /** @var \PDOException|null */
+    private static $error = null;
+
+    private static $configurations = [];
 
     /**
      * Connect constructor. Private singleton
@@ -31,21 +30,51 @@ class Connect
     {
     }
 
-    public static function getInstance(): ?\PDO
+    public static function getInstance($dbName = null, $regenerateConnection = false): ?\PDO
     {
-        if (empty(self::$instance)) {
+        $configurations = self::$configurations ?? [];
+        $default = reset($configurations);
+
+        $dbConf = $configurations[$dbName] ?? $default;
+
+        $dbDsn = $dbConf["driver"] . ":host=" . $dbConf["host"] . ";dbname=" . $dbConf["dbname"] . ";port=" . $dbConf["port"];
+
+        //DSN alternative for SQL Server (sqlsrv)
+        if ($dbConf['driver'] == 'sqlsrv') {
+            $dbDsn = $dbConf["driver"] . ":Server=" . $dbConf["host"] . "," . $dbConf["port"] . ";Database=" . $dbConf["dbname"];
+        }
+
+        if (empty(self::$instance[$dbName]) || $regenerateConnection) {
             try {
-                self::$instance = new \PDO(
-                    CONF_DB_DRIVER . ':host=' . CONF_DB_HOST . ';port=' . CONF_DB_PORT . ';dbname=' . CONF_DB_NAME,
-                    CONF_DB_USER,
-                    CONF_DB_PASS,
-                    self::OPTIONS
+                self::$instance[$dbName] = new \PDO(
+                    $dbDsn,
+                    $dbConf["username"],
+                    $dbConf["passwd"],
+                    $dbConf["options"]
                 );
             } catch (\PDOException $exception) {
-                die('Connection error');
+                self::$error = $exception;
             }
         }
 
-        return self::$instance;
+        return self::$instance[$dbName];
+    }
+
+    /**
+     * @return \PDOException|null
+     */
+    public static function getError(): ?\PDOException
+    {
+        return self::$error;
+    }
+
+    public static function config(array $configurations)
+    {
+        self::$configurations = $configurations;
+    }
+
+    public static function getConfig(string $connectionName): ?array
+    {
+        return self::$configurations[$connectionName] ?? null;
     }
 }
