@@ -73,7 +73,6 @@ $dados = DB::table("users as u")
 var_dump($dados);
 
 
-
 /**
  * Leitura de dados com parametros via metodo: ->params()
  */
@@ -259,10 +258,10 @@ $urlFilter = $_GET['filter'] ?? null;
 
 $filtersArrReference = [];
 
-Query::dynamicQueryFilters($filtersArrReference, 'ID = :ID', ['ID' => 1]);
+\Willry\QueryBuilder\QueryHelpers::dynamicQueryFilters($filtersArrReference, 'ID = :ID', ['ID' => 1]);
 
 if ($urlFilter) {
-    Query::dynamicQueryFilters($filtersArrReference, 'FILTER = :FILTER', ['FILTER' => "%$urlFilter%"]);
+    \Willry\QueryBuilder\QueryHelpers::dynamicQueryFilters($filtersArrReference, 'FILTER = :FILTER', ['FILTER' => "%$urlFilter%"]);
 }
 
 

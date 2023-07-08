@@ -11,7 +11,7 @@ class Connect
     /** @var array */
     private static $instance;
 
-    /** @var \PDOException|null */
+    /** @var \Exception|null */
     private static $error = null;
 
     private static $configurations = [];
@@ -61,9 +61,9 @@ class Connect
     }
 
     /**
-     * @return \PDOException|null
+     * @return \Exception|null
      */
-    public static function getError(): ?\PDOException
+    public static function getError(): ?\Exception
     {
         return self::$error;
     }

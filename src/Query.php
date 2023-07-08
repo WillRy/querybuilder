@@ -45,12 +45,12 @@ abstract class Query
     protected $order;
 
     /**
-     * @var int
+     * @var string
      */
     protected $limit;
 
     /**
-     * @var int
+     * @var string
      */
     protected $offset;
 
@@ -357,7 +357,7 @@ abstract class Query
 
         try {
             $stmt = $this->db->prepare($this->query);
-            $this->bind($stmt);
+            QueryHelpers::bind($stmt, $this->prepareParams());
             $stmt->execute();
 
             if (!$stmt->rowCount()) {
@@ -366,7 +366,7 @@ abstract class Query
 
             return $stmt->fetchAll(\PDO::FETCH_CLASS);
         } catch (\PDOException $exception) {
-            return $this->handleError($exception);
+            $this->handleError($exception);
         }
     }
 
@@ -376,7 +376,7 @@ abstract class Query
 
         try {
             $stmt = $this->db->prepare($this->query);
-            $this->bind($stmt);
+            QueryHelpers::bind($stmt, $this->prepareParams());
             $stmt->execute();
 
             if (!$stmt->rowCount()) {
@@ -385,7 +385,7 @@ abstract class Query
 
             return $stmt->fetchObject();
         } catch (\PDOException $exception) {
-            return $this->handleError($exception);
+            $this->handleError($exception);
         }
     }
 
@@ -395,12 +395,12 @@ abstract class Query
 
         try {
             $stmt = $this->db->prepare($this->query);
-            $this->bind($stmt);
+            QueryHelpers::bind($stmt, $this->prepareParams());
             $stmt->execute();
 
             return $stmt->rowCount();
         } catch (\PDOException $exception) {
-            return $this->handleError($exception);
+            $this->handleError($exception);
         }
     }
 
@@ -418,13 +418,13 @@ abstract class Query
             $stmt = $this->db->prepare("INSERT INTO {$this->entity} ({$columns}) VALUES ({$values})");
             $this->params($data);
 
-            $this->bind($stmt);
+            QueryHelpers::bind($stmt, $this->prepareParams());
 
             $stmt->execute();
 
             return $this->db->lastInsertId();
         } catch (\PDOException $exception) {
-            return $this->handleError($exception);
+            $this->handleError($exception);
         }
     }
 
@@ -444,13 +444,13 @@ abstract class Query
 
             $this->params($data);
 
-            $this->bind($stmt);
+            QueryHelpers::bind($stmt, $this->prepareParams());
 
             $stmt->execute();
 
             return $stmt->rowCount() ?? 1;
         } catch (\PDOException $exception) {
-            return $this->handleError($exception);
+            $this->handleError($exception);
         }
     }
 
@@ -458,11 +458,11 @@ abstract class Query
     {
         try {
             $stmt = $this->db->prepare("DELETE FROM {$this->entity} {$this->where}");
-            $this->bind($stmt);
+            QueryHelpers::bind($stmt, $this->prepareParams());
             $stmt->execute();
             return $stmt->rowCount() ?? 1;
         } catch (\PDOException $exception) {
-            return $this->handleError($exception);
+            $this->handleError($exception);
         }
     }
 
@@ -486,17 +486,15 @@ abstract class Query
 
     /**
      * @param  $exception
-     * @return null
      * @throws Exception
      */
     private function handleError(\Exception $exception)
     {
-        if ($this->silentErrors) {
-            $this->fail = $exception;
-            return null;
+        if (!$this->silentErrors) {
+            throw $exception;
         }
 
-        throw $exception;
+        $this->fail = $exception;
     }
 
 
@@ -508,31 +506,16 @@ abstract class Query
         $this->query = "SELECT $columns FROM $this->entity $this->joins $this->where $this->groupBy $this->having $this->order $this->limit $this->offset";
     }
 
-    /**
-     * @param array $data
-     * @return array|null
-     */
-    private function filter(array $data): ?array
-    {
-        $filter = [];
-        foreach ($data as $key => $value) {
-            $filter[$key] = (is_null($value) ? null : filter_var($value, FILTER_DEFAULT));
-        }
-        return $filter;
-    }
 
-    public function dump(): void
+    public function dump(): array
     {
         $this->mountQuery();
 
-        var_dump(
-            [
-                "query" => $this->query,
-                "raw_params" => $this->params(),
-                "filtered_params" => $this->filter($this->finalParams())
-            ]
-        );
-        exit;
+        return [
+            "query" => $this->query,
+            "raw_params" => $this->params(),
+            "filtered_params" => QueryHelpers::applyDefaultFilter($this->prepareParams())
+        ];
     }
 
     public function toSQL()
@@ -541,29 +524,8 @@ abstract class Query
         return $this->query;
     }
 
-    public static function dynamicQueryFilters(array &$queryParams, string $queryString, array $bind)
-    {
-        $queryParams["filters"][] = $queryString;
-        $queryParams["binds"] = !empty($queryParams["binds"]) ? array_merge($queryParams["binds"], $bind) : $bind;
 
-        $queryString = "";
-
-        if (empty($queryParams["filters"])) return "";
-
-        foreach ($queryParams["filters"] as $key => $filtro) {
-            if ($key === 0) {
-                $queryString .= $filtro;
-            } else {
-                $queryString .= " AND {$filtro}";
-            }
-        }
-
-        $queryParams["queryString"] = $queryString;
-
-        return $queryParams;
-    }
-
-    public function finalParams()
+    private function prepareParams()
     {
         $result = [];
         foreach ($this->params as $key => $param) {
@@ -576,23 +538,4 @@ abstract class Query
         return $result;
     }
 
-    public function bind(PDOStatement &$stmt)
-    {
-        $binds = $this->filter($this->finalParams());
-
-        foreach ($binds as $key => $bind) {
-            if ($key == 'limit' || $key == "offset") {
-                $stmt->bindValue(":$key", $bind, \PDO::PARAM_INT);
-            } else {
-                $stmt->bindValue(":$key", $bind);
-            }
-        }
-
-        return $binds;
-    }
-
-    public function getConnection()
-    {
-        return Connect::getInstance($this->connectionName);
-    }
 }
