@@ -243,8 +243,8 @@ abstract class Query
      */
     public function having(string $having, array $params = []): Query
     {
+        $this->having = "HAVING {$having}";
         $this->setBindings($params, 'having');
-        $this->having = "HAVING ?";
         return $this;
     }
 

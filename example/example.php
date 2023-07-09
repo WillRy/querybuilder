@@ -210,6 +210,20 @@ $result = $stmt->fetchAll(\PDO::FETCH_OBJ);
 var_dump($result);
 
 /**
+ * Having
+ */
+$sql = DB::table("users as u")
+    ->select([
+        "u.id",
+        "count(ao.id) as qtd"
+    ])
+    ->join("app_orders as ao ON ao.user_id = u.id")
+    ->groupBy("u.id")
+    ->having("count(ao.id) > ?", [1])
+    ->get();
+
+var_dump($sql);
+/**
  * DEBUG QUERY
  */
 
