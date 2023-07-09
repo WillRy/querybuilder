@@ -55,8 +55,9 @@ Connect::config($connections);
  */
 $dados = DB::table("users as u")
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
-    ->where("id <= :num", ["num" => 5])
+    ->where("id <= :num")
     ->where("email is not null")
+    ->bind('num', 5, \PDO::PARAM_INT)
     ->order("id ASC")
     ->get();
 
@@ -66,8 +67,9 @@ $dados = DB::table("users as u")
  */
 $dados = DB::table("users as u")
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
-    ->where("id <= :num", ["num" => 5])
+    ->where("id <= :num")
     ->where("email is not null")
+    ->params(["num" => 5])
     ->order("id ASC")
     ->first();
 var_dump($dados);
@@ -111,7 +113,8 @@ var_dump($dados);
  */
 $join = DB::table("users as u")
     ->selectRaw("u.id, u.first_name, u.email, ad.street as address")
-    ->leftJoin("address AS ad ON ad.user_id = u.id AND ad.street LIKE :name", ["name" => '%a%'])
+    ->leftJoin("address AS ad ON ad.user_id = u.id AND ad.street LIKE :name")
+    ->params(["name" => '%a%'])
     ->limit(3)
     ->get();
 var_dump($join);
@@ -126,7 +129,10 @@ var_dump($join);
  */
 
 /** objeto de query builder, sem executar(->get(), ->first())*/
-$address = DB::table("address")->where("street is not null");
+$address = DB::table("address")
+    ->where("street is not null")
+    ->where('id > :id')
+    ->params(['id' => 1]);
 
 $users = DB::table("users as u")
     ->selectRaw("u.id as usuario, sub.street as rua")
@@ -140,10 +146,11 @@ var_dump($users);
  * Select * from (select * from users) as sub
  */
 $dados = DB::fromSub(function (Query $query) {
-    return $query->from("users")->limit(10);
-}, 'sub')->get();
-var_dump($dados);
-
+    return $query->from("users")->selectRaw('first_name')->limit(10);
+}, 'sub')
+    ->order('first_name')->groupBy(['first_name']);
+var_dump($dados->get());
+die;
 /**
  * Condições dinamicas(where de acordo com a necessidade)
  */
@@ -152,7 +159,8 @@ $dinamico = DB::table("users as u")->select(["u.id", "u.first_name", "u.email"])
 $filtroId = 5;
 
 if (!empty($filtroId)) {
-    $dinamico->where("u.id <= :num", ['num' => $filtroId]);
+    $dinamico->where("u.id <= :num");
+    $dinamico->params(['num' => $filtroId]);
 }
 var_dump($dinamico->get());
 
@@ -170,7 +178,8 @@ var_dump($dinamico);
  * UPDATE
  */
 $update = DB::table("users as u")
-    ->where("id = :num", ['num' => 53])
+    ->where("id = :num")
+    ->params(['num' => 53])
     ->update([
         "email" => "fulano@fulano.com"
     ]);
@@ -180,7 +189,8 @@ var_dump($update);
  * DELETE
  */
 $delete = DB::table("users as u")
-    ->where("id > :num", ['num' => 56])
+    ->where("id > :num")
+    ->params(['num' => 56])
     ->delete();
 var_dump($delete);
 

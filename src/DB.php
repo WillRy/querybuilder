@@ -27,8 +27,15 @@ class DB extends Query
     ): DB
     {
         $db = new DB($connection, $regenerateConnection);
-        $callback($db);
-        $db->fromSubQuery($db, $alias);
+
+        $dbSub = new DB($connection, $regenerateConnection);
+
+        $callback($dbSub);
+        $db->fromSubQuery($dbSub, $alias);
+
+        $db->mergeBindFromAnotherQuery($dbSub);
+
+
         $db->setSilentErrors($silentErrors);
         return $db;
     }
