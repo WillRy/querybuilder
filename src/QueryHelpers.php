@@ -10,13 +10,29 @@ class QueryHelpers
 
     public static function bind(\PDOStatement &$stmt, array $params = [])
     {
-//        var_dump($params);die;
-//
-        foreach ($params as $bind) {
-            $stmt->bindValue(":{$bind['name']}", $bind['value'], $bind['filter']);
-        }
+        $defaultType = \PDO::PARAM_STR;
 
-        return $params;
+        foreach ($params as $key => $value) {
+            $type = $defaultType;
+
+            if (is_int($value)) {
+                $type = \PDO::PARAM_INT;
+            }
+
+            if (is_resource($value)) {
+                $type = \PDO::PARAM_LOB;
+            }
+
+            if (is_bool($value)) {
+                $type = \PDO::PARAM_BOOL;
+            }
+
+            $stmt->bindValue(
+                is_string($key) ? $key : $key + 1,
+                $value,
+                $type
+            );
+        }
     }
 
     public static function dynamicQueryFilters(array &$queryParams, string $queryString, array $bind)
@@ -39,46 +55,6 @@ class QueryHelpers
         $queryParams["queryString"] = $queryString;
 
         return $queryParams;
-    }
-
-    public static function random_string(string $type = 'alnum', int $len = 8): string
-    {
-        switch ($type) {
-            case 'alnum':
-            case 'numeric':
-            case 'nozero':
-            case 'alpha':
-                switch ($type) {
-                    case 'alpha':
-                        $pool = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                        break;
-
-                    case 'alnum':
-                        $pool = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                        break;
-
-                    case 'numeric':
-                        $pool = '0123456789';
-                        break;
-
-                    case 'nozero':
-                        $pool = '123456789';
-                        break;
-                }
-
-                return substr(str_shuffle(str_repeat($pool, (int)ceil($len / strlen($pool)))), 0, $len);
-
-            case 'md5':
-                return md5(uniqid((string)mt_rand(), true));
-
-            case 'sha1':
-                return sha1(uniqid((string)mt_rand(), true));
-
-            case 'crypto':
-                return bin2hex(random_bytes($len / 2));
-        }
-        // 'basic' type treated as default
-        return (string)mt_rand();
     }
 
 }

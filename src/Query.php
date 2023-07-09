@@ -35,11 +35,6 @@ abstract class Query
     protected $where;
 
     /**
-     * @var array
-     */
-    protected $params = [];
-
-    /**
      * @var string
      */
     protected $order;
@@ -79,18 +74,28 @@ abstract class Query
      */
     protected $db;
 
+    public $bindings = [
+        'select' => [],
+        'from' => [],
+        'join' => [],
+        'where' => [],
+        'groupBy' => [],
+        'having' => [],
+        'order' => [],
+        'union' => [],
+        'unionOrder' => [],
+    ];
+
     /**
      * @var array|null
      */
     protected $connectionConfig;
 
-    protected $queryIdentifier = null;
 
     public function __construct(string $connectionName = 'default', bool $regenerateConnection = false)
     {
         $this->db = Connect::getInstance($connectionName, $regenerateConnection);
         $this->connectionConfig = Connect::getConfig($connectionName);
-        $this->queryIdentifier = QueryHelpers::random_string('numeric', 6);
     }
 
 
@@ -116,8 +121,9 @@ abstract class Query
      * @param string $columns
      * @return $this
      */
-    public function selectRaw(string $columns = "*"): Query
+    public function selectRaw(string $columns = "*", array $params = []): Query
     {
+        $this->setBindings($params, 'select');
         $this->columns = array_merge($this->columns, explode(',', $columns));
         return $this;
     }
@@ -134,8 +140,9 @@ abstract class Query
      * @param string $where
      * @return $this
      */
-    public function where(string $where): Query
+    public function where(string $where, array $params = []): Query
     {
+        $this->setBindings($params, 'where');
 
         if (!empty($this->where)) {
             $this->where .= " AND {$where}";
@@ -150,9 +157,9 @@ abstract class Query
      * @param string $where
      * @return $this
      */
-    public function orWhere(string $where): Query
+    public function orWhere(string $where, array $params = []): Query
     {
-
+        $this->setBindings($params, 'where');
         if (!empty($this->where)) {
             $this->where .= " OR {$where}";
             return $this;
@@ -164,16 +171,8 @@ abstract class Query
 
     public function whereIn(string $column, array $data): Query
     {
-        $inPlaceHolder = [];
-        foreach ($data as $d) {
-            $paramName = $this->generateParam('in');
-            $inPlaceHolder[] = ":{$paramName}";
-            $this->params([
-                $paramName => $d
-            ]);
-        }
-
-        $inString = implode(",", $inPlaceHolder);
+        $inString = implode(',', array_fill(0, count($data), '?'));
+        $this->setBindings($data, 'where');
 
         if (!empty($this->where)) {
             $this->where .= " AND {$column} IN ({$inString})";
@@ -187,16 +186,8 @@ abstract class Query
     public function orWhereIn(string $column, array $data): Query
     {
 
-        $inPlaceHolder = [];
-        foreach ($data as $d) {
-            $paramName = $this->generateParam('in');
-            $inPlaceHolder[] = ":{$paramName}";
-            $this->params([
-                $paramName => $d
-            ]);
-        }
-
-        $inString = implode(",", $inPlaceHolder);
+        $inString = implode(',', array_fill(0, count($data), '?'));
+        $this->setBindings($data, 'where');
 
         if (!empty($this->where)) {
             $this->where .= " OR {$column} IN ($inString)";
@@ -213,10 +204,8 @@ abstract class Query
      */
     public function order(string $columnOrder): Query
     {
-        $paramName = $this->generateParam('order');
-
-        $this->order = "ORDER BY :{$paramName}";
-        $this->params(["{$paramName}" => $columnOrder]);
+        $this->order = "ORDER BY ?";
+        $this->setBindings([$columnOrder], 'order');
         return $this;
     }
 
@@ -225,10 +214,7 @@ abstract class Query
      */
     public function limit(int $limit): Query
     {
-        $paramName = $this->generateParam('limit');
-
-        $this->limit = "LIMIT :{$paramName}";
-        $this->bind($paramName, $limit, \PDO::PARAM_INT);
+        $this->limit = "LIMIT $limit";
         return $this;
     }
 
@@ -238,10 +224,7 @@ abstract class Query
      */
     public function offset(int $offset): Query
     {
-        $paramName = $this->generateParam('offset');
-
-        $this->offset = "OFFSET :{$paramName}";
-        $this->bind($paramName, $offset, \PDO::PARAM_INT);
+        $this->offset = "OFFSET $offset";
         return $this;
     }
 
@@ -251,8 +234,8 @@ abstract class Query
      */
     public function groupBy(array $group): Query
     {
-        $groupString = implode(",", $group);
-        $this->groupBy = "GROUP BY $groupString";
+        $this->setBindings($group, 'groupBy');
+        $this->groupBy = "GROUP BY ?";
         return $this;
     }
 
@@ -262,45 +245,23 @@ abstract class Query
      */
     public function having(string $having): Query
     {
-        $this->having = "HAVING $having";
+        $this->setBindings([$having], 'having');
+        $this->having = "HAVING ?";
         return $this;
     }
 
-    public function getParams()
+    public function getBindings()
     {
-        return $this->params;
+        return $this->bindings;
     }
 
     /**
      * @param array $params
      * @return $this
      */
-    public function params(array $params = []): Query
+    public function setBindings(array $params = [], string $type = 'where'): Query
     {
-        $preparedParams = [];
-
-        foreach ($params as $key => $param) {
-
-            $preparedParams[$key] = [
-                'name' => $key,
-                'value' => $param,
-                'filter' => \PDO::PARAM_STR
-            ];
-        }
-
-        $this->params = array_merge($preparedParams, $this->params);
-
-        return $this;
-    }
-
-    public function bind(string $name, $value, $filter = \PDO::PARAM_STR): Query
-    {
-        $preparedParam[$name] = [
-            'name' => $name,
-            'value' => $value,
-            'filter' => $filter
-        ];
-        $this->params = array_merge($preparedParam, $this->params);
+        $this->bindings[$type] = array_merge($params, $this->bindings[$type]);
 
         return $this;
     }
@@ -309,8 +270,10 @@ abstract class Query
      * @param string $join
      * @return $this
      */
-    public function leftJoin(string $join): Query
+    public function leftJoin(string $join, array $params = []): Query
     {
+        $this->setBindings($params, 'join');
+
         $this->joins .= PHP_EOL;
 
         $this->joins .= "LEFT JOIN $join";
@@ -322,8 +285,10 @@ abstract class Query
      * @param string $join
      * @return $this
      */
-    public function rightJoin(string $join): Query
+    public function rightJoin(string $join, array $params = []): Query
     {
+        $this->setBindings($params, 'join');
+
         $this->joins .= PHP_EOL;
 
         $this->joins .= "RIGHT JOIN $join";
@@ -335,16 +300,20 @@ abstract class Query
      * @param string $join
      * @return $this
      */
-    public function join(string $join): Query
+    public function join(string $join, array $params = []): Query
     {
+        $this->setBindings($params, 'join');
+
         $this->joins .= PHP_EOL;
 
         $this->joins .= "INNER JOIN $join";
         return $this;
     }
 
-    public function joinSub(Query $subquery, string $alias, $condition)
+    public function joinSub(Query $subquery, string $alias, $condition, array $params = [])
     {
+        $this->setBindings($params, 'join');
+
         $this->joins .= PHP_EOL;
 
         $this->joins .= "INNER JOIN ({$subquery->toSQL()}) AS $alias ON $condition";
@@ -354,8 +323,10 @@ abstract class Query
         return $this;
     }
 
-    public function leftJoinSub(Query $subquery, string $alias, $condition)
+    public function leftJoinSub(Query $subquery, string $alias, $condition, array $params = [])
     {
+        $this->setBindings($params, 'join');
+
         $this->joins .= PHP_EOL;
 
         $this->joins .= "LEFT JOIN ({$subquery->toSQL()}) AS $alias ON $condition";
@@ -365,8 +336,10 @@ abstract class Query
         return $this;
     }
 
-    public function rightJoinSub(Query $subquery, string $alias, $condition)
+    public function rightJoinSub(Query $subquery, string $alias, $condition, array $params = [])
     {
+        $this->setBindings($params, 'join');
+
         $this->joins .= PHP_EOL;
 
         $this->joins .= "RIGHT JOIN ({$subquery->toSQL()}) AS $alias ON $condition";
@@ -382,7 +355,7 @@ abstract class Query
 
         try {
             $stmt = $this->db->prepare($this->query);
-            QueryHelpers::bind($stmt, $this->prepareParams());
+            QueryHelpers::bind($stmt, $this->flatBindings());
             $stmt->execute();
 
             if (!$stmt->rowCount()) {
@@ -401,7 +374,7 @@ abstract class Query
 
         try {
             $stmt = $this->db->prepare($this->query);
-            QueryHelpers::bind($stmt, $this->prepareParams());
+            QueryHelpers::bind($stmt, $this->flatBindings());
             $stmt->execute();
 
             if (!$stmt->rowCount()) {
@@ -420,7 +393,7 @@ abstract class Query
 
         try {
             $stmt = $this->db->prepare($this->query);
-            QueryHelpers::bind($stmt, $this->prepareParams());
+            QueryHelpers::bind($stmt, $this->flatBindings());
             $stmt->execute();
 
             return $stmt->rowCount();
@@ -441,9 +414,9 @@ abstract class Query
             $values = ":" . implode(", :", array_keys($data));
 
             $stmt = $this->db->prepare("INSERT INTO {$this->entity} ({$columns}) VALUES ({$values})");
-            $this->params($data);
+            $this->setBindings($data);
 
-            QueryHelpers::bind($stmt, $this->prepareParams());
+            QueryHelpers::bind($stmt, $this->flatBindings());
 
             $stmt->execute();
 
@@ -467,9 +440,9 @@ abstract class Query
 
             $stmt = $this->db->prepare("UPDATE {$this->entity} SET {$dateSet} {$this->where}");
 
-            $this->params($data);
+            $this->setBindings($data);
 
-            QueryHelpers::bind($stmt, $this->prepareParams());
+            QueryHelpers::bind($stmt, $this->flatBindings());
 
             $stmt->execute();
 
@@ -483,7 +456,7 @@ abstract class Query
     {
         try {
             $stmt = $this->db->prepare("DELETE FROM {$this->entity} {$this->where}");
-            QueryHelpers::bind($stmt, $this->prepareParams());
+            QueryHelpers::bind($stmt, $this->flatBindings());
             $stmt->execute();
             return $stmt->rowCount() ?? 1;
         } catch (\PDOException $exception) {
@@ -538,7 +511,7 @@ abstract class Query
 
         return [
             "query" => $this->query,
-            "raw_params" => $this->params,
+            "raw_params" => $this->bindings,
         ];
     }
 
@@ -549,30 +522,18 @@ abstract class Query
     }
 
 
-    private function prepareParams()
+    private function flatBindings()
     {
-        $result = [];
-        foreach ($this->params as $param) {
-            $param['value'] = is_array($param['value']) ? implode(",", $param['value']) : $param['value'];
-            $result[] = $param;
+        $params = [];
+        foreach ($this->bindings as $key => $binds) {
+            $params = array_merge($params, $this->bindings[$key]);
         }
 
-        return $result;
-    }
-
-    public function generateParam(string $name)
-    {
-        $param = new \stdClass();
-        $paramNum = count($this->params) + 1;
-
-        $identifier = $this->queryIdentifier;
-        $paramName = "{$name}{$paramNum}{$identifier}";
-
-        return $paramName;
+        return $params;
     }
 
     public function mergeBindFromAnotherQuery(Query $query)
     {
-        $this->params = array_merge($query->getParams(), $this->params);
+        $this->bindings = array_merge_recursive($this->getBindings(), $query->getBindings());
     }
 }

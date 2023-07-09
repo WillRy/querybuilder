@@ -110,7 +110,7 @@ $dados = DB::table("users as u")
     ->where("id <= :num")
     ->where("email is not null")
     ->order("id ASC")
-    ->params([
+    ->setBindings([
         "num" => 5
     ])
     ->get();
@@ -125,7 +125,7 @@ $dados = DB::table("users as u", $nomeConexao)
     ->where("id <= :num")
     ->where("email is not null")
     ->order("id ASC")
-    ->params([
+    ->setBindings([
         "num" => 5
     ])
     ->get();
@@ -258,7 +258,7 @@ $sql = DB::table("users as u")
     ->join("app_orders as ao ON ao.user_id = u.id")
     ->groupBy(["u.id"])
     ->having("count(ao.id) > :qtd")
-    ->params([
+    ->setBindings([
         "qtd" => 1
     ])
     ->toSQL();
@@ -272,7 +272,7 @@ DB::table("users as u")
     ->join("app_orders as ao ON ao.user_id = u.id")
     ->groupBy(["u.id"])
     ->having("count(ao.id) > :qtd")
-    ->params([
+    ->setBindings([
         "qtd" => 1
     ])
     ->dump();
@@ -300,7 +300,7 @@ $sql = DB::table("users as u")
         "u.name"
     ])
     ->where($filtersArrReference['queryString'])
-    ->params($filtersArrReference['binds'])
+    ->setBindings($filtersArrReference['binds'])
     ->toSQL();
 
 var_dump($sql);

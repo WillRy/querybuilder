@@ -55,11 +55,14 @@ Connect::config($connections);
  */
 $dados = DB::table("users as u")
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
-    ->where("id <= :num")
+    ->selectRaw("IF(1 = ?, 'verdadeiro','falso') AS boolean", [1])
+    ->where("id <= ?", [5])
     ->where("email is not null")
-    ->bind('num', 5, \PDO::PARAM_INT)
     ->order("id ASC")
     ->get();
+
+
+var_dump($dados);
 
 
 /**
@@ -67,27 +70,13 @@ $dados = DB::table("users as u")
  */
 $dados = DB::table("users as u")
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
-    ->where("id <= :num")
+    ->selectRaw("IF(1 = ?, 'verdadeiro','falso') AS boolean", [1])
+    ->where("id <= ?", [5])
     ->where("email is not null")
-    ->params(["num" => 5])
     ->order("id ASC")
     ->first();
 var_dump($dados);
 
-
-/**
- * Leitura de dados com parametros via metodo: ->params()
- */
-$dados = DB::table("users as u")
-    ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
-    ->where("id <= :num")
-    ->where("email is not null")
-    ->order("id ASC")
-    ->params([
-        "num" => 5
-    ])
-    ->get();
-var_dump($dados);
 
 /**
  * Escolher a conexão de banco de dados
@@ -95,13 +84,12 @@ var_dump($dados);
 $nomeConexao = 'default';
 $dados = DB::table("users as u", $nomeConexao)
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
-    ->where("id <= :num")
+    ->selectRaw("IF(1 = ?, 'verdadeiro','falso') AS boolean", [1])
+    ->where("id <= ?", [5])
     ->where("email is not null")
     ->order("id ASC")
-    ->params([
-        "num" => 5
-    ])
-    ->get();
+    ->first();
+
 var_dump($dados);
 
 
@@ -112,9 +100,8 @@ var_dump($dados);
  * rightJoin()
  */
 $join = DB::table("users as u")
-    ->selectRaw("u.id, u.first_name, u.email, ad.street as address")
-    ->leftJoin("address AS ad ON ad.user_id = u.id AND ad.street LIKE :name")
-    ->params(["name" => '%a%'])
+    ->selectRaw("u . id, u . first_name, u . email, ad . street as address")
+    ->leftJoin("address as ad ON ad . user_id = u . id and ad . street LIKE ?", ['%a%'])
     ->limit(3)
     ->get();
 var_dump($join);
@@ -131,14 +118,12 @@ var_dump($join);
 /** objeto de query builder, sem executar(->get(), ->first())*/
 $address = DB::table("address")
     ->where("street is not null")
-    ->where('id > :id')
-    ->params(['id' => 1]);
+    ->where('id > ?', [1]);
 
 $users = DB::table("users as u")
-    ->selectRaw("u.id as usuario, sub.street as rua")
-    ->leftJoinSub($address, 'sub', "sub.user_id = u.id")
-    ->get();
-var_dump($users);
+    ->selectRaw("u . id as usuario, sub . street as rua")
+    ->leftJoinSub($address, 'sub', "sub . user_id = u.id AND 1 = ?", [1]);
+var_dump($users->get());die;
 
 /**
  * Selecionar de uma subquery
@@ -154,13 +139,13 @@ die;
 /**
  * Condições dinamicas(where de acordo com a necessidade)
  */
-$dinamico = DB::table("users as u")->select(["u.id", "u.first_name", "u.email"]);
+$dinamico = DB::table("users as u")->select(["u . id", "u . first_name", "u . email"]);
 
 $filtroId = 5;
 
 if (!empty($filtroId)) {
-    $dinamico->where("u.id <= :num");
-    $dinamico->params(['num' => $filtroId]);
+    $dinamico->where("u . id <= :num");
+    $dinamico->setBindings(['num' => $filtroId]);
 }
 var_dump($dinamico->get());
 
@@ -169,8 +154,8 @@ var_dump($dinamico->get());
  * WHERE IN
  */
 $dinamico = DB::table("users as u")
-    ->selectRaw("u.id, u.first_name, u.email")
-    ->whereIn("u.id", [1, 2, 3, 4, 5])
+    ->selectRaw("u . id, u . first_name, u . email")
+    ->whereIn("u . id", [1, 2, 3, 4, 5])
     ->get();
 var_dump($dinamico);
 
@@ -179,9 +164,9 @@ var_dump($dinamico);
  */
 $update = DB::table("users as u")
     ->where("id = :num")
-    ->params(['num' => 53])
+    ->setBindings(['num' => 53])
     ->update([
-        "email" => "fulano@fulano.com"
+        "email" => "fulano@fulano . com"
     ]);
 var_dump($update);
 
@@ -190,7 +175,7 @@ var_dump($update);
  */
 $delete = DB::table("users as u")
     ->where("id > :num")
-    ->params(['num' => 56])
+    ->setBindings(['num' => 56])
     ->delete();
 var_dump($delete);
 
@@ -202,7 +187,7 @@ $create = DB::table("users")
     ->create([
         'first_name' => 'fulano',
         'last_name' => 'qualquer' . time(),
-        "email" => "fulano" . time() . "@fulano.com"
+        "email" => "fulano" . time() . "@fulano . com"
     ]);
 var_dump($create);
 
@@ -214,7 +199,7 @@ $stmt = Connect::getInstance()->prepare('
             select
                 u.id,
                 u.first_name,
-                GROUP_CONCAT(distinct CONCAT_WS(";", a.id, a.street) SEPARATOR "|") as enderecos
+                GROUP_CONCAT(distinct CONCAT_WS(";", a.id, a.street) SEPARATOR " | ") as enderecos
             from
                 users u
             left join address a on
@@ -233,13 +218,13 @@ var_dump($result);
 
 $sql = DB::table("users as u")
     ->select([
-        "u.id",
-        "count(ao.id) as qtd"
+        "u . id",
+        "count(ao . id) as qtd"
     ])
-    ->join("app_orders as ao ON ao.user_id = u.id")
-    ->groupBy(["u.id"])
-    ->having("count(ao.id) > :qtd")
-    ->params([
+    ->join("app_orders as ao ON ao . user_id = u . id")
+    ->groupBy(["u . id"])
+    ->having("count(ao . id) > :qtd")
+    ->setBindings([
         "qtd" => 1
     ])
     ->toSQL();
@@ -247,13 +232,13 @@ var_dump($sql);
 
 DB::table("users as u")
     ->select([
-        "u.id",
-        "count(ao.id) as qtd"
+        "u . id",
+        "count(ao . id) as qtd"
     ])
-    ->join("app_orders as ao ON ao.user_id = u.id")
-    ->groupBy(["u.id"])
-    ->having("count(ao.id) > :qtd")
-    ->params([
+    ->join("app_orders as ao ON ao . user_id = u . id")
+    ->groupBy(["u . id"])
+    ->having("count(ao . id) > :qtd")
+    ->setBindings([
         "qtd" => 1
     ])
     ->dump();
@@ -271,17 +256,17 @@ $filtersArrReference = [];
 \Willry\QueryBuilder\QueryHelpers::dynamicQueryFilters($filtersArrReference, 'ID = :ID', ['ID' => 1]);
 
 if ($urlFilter) {
-    \Willry\QueryBuilder\QueryHelpers::dynamicQueryFilters($filtersArrReference, 'FILTER = :FILTER', ['FILTER' => "%$urlFilter%"]);
+    \Willry\QueryBuilder\QueryHelpers::dynamicQueryFilters($filtersArrReference, 'FILTER = :FILTER', ['FILTER' => "%$urlFilter % "]);
 }
 
 
 $sql = DB::table("users as u")
     ->select([
-        "u.id",
-        "u.name"
+        "u . id",
+        "u . name"
     ])
     ->where($filtersArrReference['queryString'])
-    ->params($filtersArrReference['binds'])
+    ->setBindings($filtersArrReference['binds'])
     ->toSQL();
 
 var_dump($sql);
