@@ -15,7 +15,7 @@ abstract class Query
     protected $silentErrors;
 
     /**
-     * @var \PDOException|null
+     * @var \Exception|null
      */
     protected $fail;
 
@@ -128,10 +128,8 @@ abstract class Query
         return $this;
     }
 
-    public function select(array $columns = []): Query
+    public function select(array $columns = ['*']): Query
     {
-        $columns = empty($columns) ? ['*'] : $columns;
-
         $this->columns = array_merge($this->columns, $columns);
         return $this;
     }
@@ -232,10 +230,10 @@ abstract class Query
      * @param array $group
      * @return DB
      */
-    public function groupBy(array $group): Query
+    public function groupBy(string $group): Query
     {
-        $this->setBindings($group, 'groupBy');
-        $this->groupBy = "GROUP BY ?";
+
+        $this->groupBy = "GROUP BY {$group}";
         return $this;
     }
 
@@ -243,9 +241,9 @@ abstract class Query
      * @param string $having
      * @return DB
      */
-    public function having(string $having): Query
+    public function having(string $having, array $params = []): Query
     {
-        $this->setBindings([$having], 'having');
+        $this->setBindings($params, 'having');
         $this->having = "HAVING ?";
         return $this;
     }
@@ -358,10 +356,6 @@ abstract class Query
             QueryHelpers::bind($stmt, $this->flatBindings());
             $stmt->execute();
 
-            if (!$stmt->rowCount()) {
-                return [];
-            }
-
             return $stmt->fetchAll(\PDO::FETCH_CLASS);
         } catch (\PDOException $exception) {
             $this->handleError($exception);
@@ -411,10 +405,10 @@ abstract class Query
     {
         try {
             $columns = implode(", ", array_keys($data));
-            $values = ":" . implode(", :", array_keys($data));
+            $values = implode(',', array_fill(0, count($data), '?'));
 
             $stmt = $this->db->prepare("INSERT INTO {$this->entity} ({$columns}) VALUES ({$values})");
-            $this->setBindings($data);
+            $this->setBindings(array_values($data));
 
             QueryHelpers::bind($stmt, $this->flatBindings());
 
@@ -434,13 +428,13 @@ abstract class Query
         try {
             $dateSet = [];
             foreach ($data as $bind => $value) {
-                $dateSet[] = "{$bind} = :{$bind}";
+                $dateSet[] = "{$bind} = ?";
             }
             $dateSet = implode(", ", $dateSet);
 
             $stmt = $this->db->prepare("UPDATE {$this->entity} SET {$dateSet} {$this->where}");
 
-            $this->setBindings($data);
+            $this->setBindings(array_values($data));
 
             QueryHelpers::bind($stmt, $this->flatBindings());
 
