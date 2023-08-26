@@ -4,6 +4,7 @@ require_once __DIR__ . "/../vendor/autoload.php";
 
 //connection config file
 require_once __DIR__ . "/config.php";
+require_once __DIR__ . "/helpers.php";
 
 use Willry\QueryBuilder\Connect;
 use Willry\QueryBuilder\DB;
@@ -131,11 +132,14 @@ var_dump($users->get());
  *
  * Select * from (select * from users) as sub
  */
+$dbSub = DB::table("users")->where("2 = ?",[2])->limit(10);
+
 $data = DB::fromSub(function (Query $query) {
-    return $query->from("users")->selectRaw('first_name')->limit(10);
+    return $query->from("users")->selectRaw('first_name')->where("1 = ?",[1])->limit(10);
 }, 'sub')
-    ->order('first_name')->groupBy('first_name');
-var_dump($data->get());
+    ->where('4 = ?',[4])
+    ->joinSub($dbSub, 'sub','sub.id = users.id and 3 = ?',[3]);
+var_dump($data->toSQL(), $data->flatBindings());
 
 
 /**
@@ -153,8 +157,8 @@ var_dump($dinamico);
 $create = DB::table("users")
     ->create([
         'first_name' => 'fulano',
-        'last_name' => 'qualquer' . time(),
-        "email" => "fulano" . time() . "@fulano.com"
+        'last_name' => 'qualquer' . generateRandomString(),
+        "email" => "fulano" . generateRandomString() . "@fulano.com"
     ]);
 var_dump($create);
 
@@ -162,9 +166,9 @@ var_dump($create);
  * UPDATE
  */
 $update = DB::table("users as u")
-    ->where("id = ?", [66])
+    ->where("id = ?", [$create])
     ->update([
-        "email" => "fulano@fulano.com"
+        "email" => "fulano" . generateRandomString() . "@fulano.com"
     ]);
 var_dump($update);
 

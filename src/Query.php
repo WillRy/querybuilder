@@ -78,6 +78,8 @@ abstract class Query
         'select' => [],
         'from' => [],
         'join' => [],
+        'create' => [],
+        'update' => [],
         'where' => [],
         'groupBy' => [],
         'having' => [],
@@ -113,6 +115,8 @@ abstract class Query
     public function fromSubQuery(Query $query, string $alias = 'sub')
     {
         $this->entity = "(" . $query->toSQL() . ") as $alias";
+        $this->setBindings($query->flatBindings(), 'from');
+        
         return $this;
     }
 
@@ -259,7 +263,7 @@ abstract class Query
      */
     public function setBindings(array $params = [], string $type = 'where'): Query
     {
-        $this->bindings[$type] = array_merge($params, $this->bindings[$type]);
+        $this->bindings[$type] = array_merge($this->bindings[$type],$params);
 
         return $this;
     }
@@ -310,39 +314,36 @@ abstract class Query
 
     public function joinSub(Query $subquery, string $alias, $condition, array $params = [])
     {
+        $this->setBindings($subquery->flatBindings(), 'join');
         $this->setBindings($params, 'join');
 
         $this->joins .= PHP_EOL;
 
         $this->joins .= "INNER JOIN ({$subquery->toSQL()}) AS $alias ON $condition";
 
-        $this->mergeBindFromAnotherQuery($subquery);
-
         return $this;
     }
 
     public function leftJoinSub(Query $subquery, string $alias, $condition, array $params = [])
     {
+        $this->setBindings($subquery->flatBindings(), 'join');
         $this->setBindings($params, 'join');
 
         $this->joins .= PHP_EOL;
 
         $this->joins .= "LEFT JOIN ({$subquery->toSQL()}) AS $alias ON $condition";
 
-        $this->mergeBindFromAnotherQuery($subquery);
-
         return $this;
     }
 
     public function rightJoinSub(Query $subquery, string $alias, $condition, array $params = [])
     {
+        $this->setBindings($subquery->flatBindings(), 'join');
         $this->setBindings($params, 'join');
 
         $this->joins .= PHP_EOL;
 
         $this->joins .= "RIGHT JOIN ({$subquery->toSQL()}) AS $alias ON $condition";
-
-        $this->mergeBindFromAnotherQuery($subquery);
 
         return $this;
     }
@@ -408,7 +409,7 @@ abstract class Query
             $values = implode(',', array_fill(0, count($data), '?'));
 
             $stmt = $this->db->prepare("INSERT INTO {$this->entity} ({$columns}) VALUES ({$values})");
-            $this->setBindings(array_values($data));
+            $this->setBindings(array_values($data), 'create');
 
             QueryHelpers::bind($stmt, $this->flatBindings());
 
@@ -434,7 +435,7 @@ abstract class Query
 
             $stmt = $this->db->prepare("UPDATE {$this->entity} SET {$dateSet} {$this->where}");
 
-            $this->setBindings(array_values($data));
+            $this->setBindings(array_values($data), 'update');
 
             QueryHelpers::bind($stmt, $this->flatBindings());
 
@@ -516,7 +517,7 @@ abstract class Query
     }
 
 
-    private function flatBindings()
+    public function flatBindings()
     {
         $params = [];
         foreach ($this->bindings as $key => $binds) {
@@ -528,6 +529,21 @@ abstract class Query
 
     public function mergeBindFromAnotherQuery(Query $query)
     {
-        $this->bindings = array_merge_recursive($this->getBindings(), $query->getBindings());
+        $array1 = $this->getBindings();
+        $array2 = $query->getBindings();
+        $mergedArray = [
+            'select' => array_merge($array1['select'], $array2['select']),
+            'from' => array_merge($array1['from'], $array2['from']),
+            'join' => array_merge($array1['join'], $array2['join']),
+            'update' => array_merge($array1['update'], $array2['update']),
+            'where' => array_merge($array1['where'], $array2['where']),
+            'groupBy' => array_merge($array1['groupBy'], $array2['groupBy']),
+            'having' => array_merge($array1['having'], $array2['having']),
+            'order' => array_merge($array1['order'], $array2['order']),
+            'union' => array_merge($array1['union'], $array2['union']),
+            'unionOrder' => array_merge($array1['unionOrder'], $array2['unionOrder']),
+        ];
+
+        $this->bindings = $mergedArray;
     }
 }

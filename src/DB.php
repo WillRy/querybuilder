@@ -33,9 +33,6 @@ class DB extends Query
         $callback($dbSub);
         $db->fromSubQuery($dbSub, $alias);
 
-        $db->mergeBindFromAnotherQuery($dbSub);
-
-
         $db->setSilentErrors($silentErrors);
         return $db;
     }

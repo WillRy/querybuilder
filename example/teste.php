@@ -1,10 +1,14 @@
 <?php
 
-use Willry\QueryBuilder\Connect;
-use Willry\QueryBuilder\DB;
-
 require_once __DIR__ . "/../vendor/autoload.php";
 
+//connection config file
+require_once __DIR__ . "/config.php";
+
+use Willry\QueryBuilder\Connect;
+use Willry\QueryBuilder\DB;
+use Willry\QueryBuilder\Query;
+use Willry\QueryBuilder\QueryHelpers;
 
 /**
  * Informar um array onde a chave é o nome da conexão
@@ -49,10 +53,11 @@ $connections = [
 Connect::config($connections);
 
 
-$dados = DB::table("users as u")
-    ->select(["u.id", "u.first_name", "u.email"])
-    ->limit(3)
-    ->get();
+$dbSub = DB::table("users")->where("2 = ?",[2])->limit(10);
 
-var_dump($dados);
-
+$data = DB::fromSub(function (Query $query) {
+    return $query->from("users")->selectRaw('first_name')->where("1 = ?",[1])->limit(10);
+}, 'sub')
+    ->where('4 = ?',[4])
+    ->joinSub($dbSub, 'sub','sub.id = users.id and 3 = ?',[3]);
+var_dump($data->toSQL(), $data->flatBindings());

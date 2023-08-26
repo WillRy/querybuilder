@@ -3,12 +3,19 @@
 Um query builder simples e fácil de usar, abstraindo a utilização do PDO de forma produtiva e segura com filtragem dos
 dados.
 
-### Recursos
+
+## Recursos
 
 - Instalação simples e sem dependências
 - Abstração completa do CRUD e transações, e execução de queries com JOINs, ORDER, LIMIT, OFFSET, GROUP BY e HAVING.
 - Métodos para INNER JOIN, LEFT JOIN E RIGHT JOIN com Subqueries
 - Pode ser fácilmente extendida e personalizada
+
+## Bancos suportados
+
+- MySQL
+- MariaDB
+- PostgreSQL
 
 ## Instalação
 
@@ -32,6 +39,7 @@ require_once __DIR__ . "/../vendor/autoload.php";
 
 //connection config file
 require_once __DIR__ . "/config.php";
+require_once __DIR__ . "/helpers.php";
 
 use Willry\QueryBuilder\Connect;
 use Willry\QueryBuilder\DB;
@@ -159,11 +167,14 @@ var_dump($users->get());
  *
  * Select * from (select * from users) as sub
  */
+$dbSub = DB::table("users")->where("2 = ?",[2])->limit(10);
+
 $data = DB::fromSub(function (Query $query) {
-    return $query->from("users")->selectRaw('first_name')->limit(10);
+    return $query->from("users")->selectRaw('first_name')->where("1 = ?",[1])->limit(10);
 }, 'sub')
-    ->order('first_name')->groupBy('first_name');
-var_dump($data->get());
+    ->where('4 = ?',[4])
+    ->joinSub($dbSub, 'sub','sub.id = users.id and 3 = ?',[3]);
+var_dump($data->toSQL(), $data->flatBindings());
 
 
 /**
@@ -181,8 +192,8 @@ var_dump($dinamico);
 $create = DB::table("users")
     ->create([
         'first_name' => 'fulano',
-        'last_name' => 'qualquer' . time(),
-        "email" => "fulano" . time() . "@fulano.com"
+        'last_name' => 'qualquer' . generateRandomString(),
+        "email" => "fulano" . generateRandomString() . "@fulano.com"
     ]);
 var_dump($create);
 
@@ -190,9 +201,9 @@ var_dump($create);
  * UPDATE
  */
 $update = DB::table("users as u")
-    ->where("id = ?", [66])
+    ->where("id = ?", [$create])
     ->update([
-        "email" => "fulano@fulano.com"
+        "email" => "fulano" . generateRandomString() . "@fulano.com"
     ]);
 var_dump($update);
 
@@ -237,6 +248,20 @@ $stmt->execute();
 $result = $stmt->fetchAll(\PDO::FETCH_OBJ);
 var_dump($result);
 
+/**
+ * Having
+ */
+$sql = DB::table("users as u")
+    ->select([
+        "u.id",
+        "count(ao.id) as qtd"
+    ])
+    ->join("app_orders as ao ON ao.user_id = u.id")
+    ->groupBy("u.id")
+    ->having("count(ao.id) > ?", [1])
+    ->get();
+
+var_dump($sql);
 /**
  * DEBUG QUERY
  */
@@ -283,6 +308,7 @@ $sql = DB::table("users as u")
     ->where($filtersArrReference['queryString'], $filtersArrReference['binds'])
     ->first();
 var_dump($sql);
+
 
 ```
 
