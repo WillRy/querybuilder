@@ -1,7 +1,7 @@
 <?php
 
 
-function generateRandomString($length = 10)
+function generateRandomString($length = 64)
 {
     // Check if the length is valid
     if ($length <= 0) {

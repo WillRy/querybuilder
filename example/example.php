@@ -7,9 +7,12 @@ require_once __DIR__ . "/config.php";
 require_once __DIR__ . "/helpers.php";
 
 use Willry\QueryBuilder\Connect;
+use Willry\QueryBuilder\Create;
 use Willry\QueryBuilder\DB;
+use Willry\QueryBuilder\Delete;
 use Willry\QueryBuilder\Query;
 use Willry\QueryBuilder\QueryHelpers;
+use Willry\QueryBuilder\Update;
 
 /**
  * Informar um array onde a chave é o nome da conexão
@@ -55,22 +58,24 @@ Connect::config($connections);
 /**
  * Leitura de dados basicos(trazer multiplos resultados)
  */
-$data = DB::table("users as u")
+$data = (new Query())
+    ->from('users as u')
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
     ->selectRaw("IF(1 = ?, 'verdadeiro','falso') AS boolean", [1])
-    ->where("id <= ?", [-1])
+    ->where("id >= ?", [1])
     ->where("email is not null")
     ->order("id ASC")
     ->get();
 
 
-var_dump($data);;
+var_dump($data);
 
 
 /**
  * Leitura de dados basicos(trazer único resultado)
  */
-$data = DB::table("users as u")
+$data = (new Query())
+    ->from('users as u')
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
     ->selectRaw("IF(1 = ?, 'verdadeiro','falso') AS boolean", [1])
     ->where("id <= ?", [5])
@@ -84,7 +89,8 @@ var_dump($data);
  * Escolher a conexão de banco de dados
  */
 $nomeConexao = 'default';
-$data = DB::table("users as u", $nomeConexao)
+$data = (new Query($nomeConexao))
+    ->from('users as u')
     ->select(["u.id", "u.first_name", "u.email"]) // OR ->selectRaw("u.id, u.first_name, u.email")
     ->selectRaw("IF(1 = ?, 'verdadeiro','falso') AS boolean", [1])
     ->where("id <= ?", [5])
@@ -101,7 +107,8 @@ var_dump($data);
  * leftJoin()
  * rightJoin()
  */
-$join = DB::table("users as u")
+$join = (new Query())
+    ->from('users as u')
     ->selectRaw("u.id, u.first_name, u.email, ad.street as address")
     ->leftJoin("address as ad ON ad.user_id = u.id and ad.street LIKE ?", ['%a%'])
     ->limit(3)
@@ -118,11 +125,13 @@ var_dump($join);
  */
 
 /** objeto de query builder, sem executar(->get(), ->first())*/
-$address = DB::table("address")
+$address = (new Query())
+    ->from('address as u')
     ->where("street is not null")
     ->where('id > ?', [1]);
 
-$users = DB::table("users as u")
+$users = (new Query())
+    ->from('users as u')
     ->selectRaw("u.id as usuario, sub.street as rua")
     ->leftJoinSub($address, 'sub', "sub.user_id = u.id AND 1 = ?", [1]);
 var_dump($users->get());
@@ -132,20 +141,20 @@ var_dump($users->get());
  *
  * Select * from (select * from users) as sub
  */
-$dbSub = DB::table("users")->where("2 = ?",[2])->limit(10);
+$dbSub = (new Query())->from('users as u')->where("2 = ?", [2])->limit(10);
 
-$data = DB::fromSub(function (Query $query) {
-    return $query->from("users")->selectRaw('first_name')->where("1 = ?",[1])->limit(10);
+$data = (new Query())->fromSubQuery(function (Query $query) {
+    return $query->from("users")->selectRaw('id,first_name')->where("1 = ?", [1])->limit(10);
 }, 'sub')
-    ->where('4 = ?',[4])
-    ->joinSub($dbSub, 'sub','sub.id = users.id and 3 = ?',[3]);
-var_dump($data->toSQL(), $data->flatBindings());
+    ->where('4 = ?', [4])
+    ->joinSub($dbSub, 'sub2', 'sub2.id = sub.id and 3 = ?', [3]);
+var_dump($data->toSQL(), $data->flatBindings(), $data->get());
 
 
 /**
  * WHERE IN
  */
-$dinamico = DB::table("users as u")
+$dinamico = (new Query())->from("users as u")
     ->selectRaw("u.id, u.first_name, u.email")
     ->whereIn("u.id", [1, 2, 3, 4, 5])
     ->get();
@@ -154,7 +163,7 @@ var_dump($dinamico);
 /**
  * Create
  */
-$create = DB::table("users")
+$create = (new Create())->from("users")
     ->create([
         'first_name' => 'fulano',
         'last_name' => 'qualquer' . generateRandomString(),
@@ -165,7 +174,7 @@ var_dump($create);
 /**
  * UPDATE
  */
-$update = DB::table("users as u")
+$update = (new Update())->from("users as u")
     ->where("id = ?", [$create])
     ->update([
         "email" => "fulano" . generateRandomString() . "@fulano.com"
@@ -175,7 +184,7 @@ var_dump($update);
 /**
  * DELETE
  */
-$delete = DB::table("users as u")
+$delete = (new Delete())->from("users as u")
     ->where("id > ?", [56])
     ->delete();
 var_dump($delete);
@@ -184,7 +193,7 @@ var_dump($delete);
 /**
  * Condições dinamicas(where de acordo com a necessidade)
  */
-$dinamico = DB::table("users as u")->select(["u.id", "u.first_name", "u.email"]);
+$dinamico = (new Query())->from("users as u")->select(["u.id", "u.first_name", "u.email"]);
 
 $filtroId = 5;
 
@@ -216,7 +225,7 @@ var_dump($result);
 /**
  * Having
  */
-$sql = DB::table("users as u")
+$sql = (new Query())->from("users as u")
     ->select([
         "u.id",
         "count(ao.id) as qtd"
@@ -231,7 +240,7 @@ var_dump($sql);
  * DEBUG QUERY
  */
 
-$sql = DB::table("users as u")
+$sql = (new Query())->from("users as u")
     ->select([
         "u.id",
         "count(ao.id) as qtd"
@@ -242,7 +251,7 @@ $sql = DB::table("users as u")
     ->toSQL();
 var_dump($sql);
 
-$sqlAndBindings = DB::table("users as u")
+$sqlAndBindings = (new Query())->from("users as u")
     ->select([
         "u.id",
         "count(ao.id) as qtd"
@@ -268,7 +277,7 @@ if ($urlFilter) {
 }
 
 
-$sql = DB::table("users as u")
+$sql = (new Query())->from("users as u")
     ->select(['*'])
     ->where($filtersArrReference['queryString'], $filtersArrReference['binds'])
     ->first();

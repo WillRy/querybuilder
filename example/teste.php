@@ -4,11 +4,14 @@ require_once __DIR__ . "/../vendor/autoload.php";
 
 //connection config file
 require_once __DIR__ . "/config.php";
+require_once __DIR__ . "/helpers.php";
 
 use Willry\QueryBuilder\Connect;
+use Willry\QueryBuilder\Create;
 use Willry\QueryBuilder\DB;
 use Willry\QueryBuilder\Query;
 use Willry\QueryBuilder\QueryHelpers;
+use Willry\QueryBuilder\Update;
 
 /**
  * Informar um array onde a chave é o nome da conexão
@@ -53,11 +56,16 @@ $connections = [
 Connect::config($connections);
 
 
-$dbSub = DB::table("users")->where("2 = ?",[2])->limit(10);
+$db = (new Update())->from("users")->update([
+    'last_name' => generateRandomString()
+])->exec();
 
-$data = DB::fromSub(function (Query $query) {
-    return $query->from("users")->selectRaw('first_name')->where("1 = ?",[1])->limit(10);
-}, 'sub')
-    ->where('4 = ?',[4])
-    ->joinSub($dbSub, 'sub','sub.id = users.id and 3 = ?',[3]);
-var_dump($data->toSQL(), $data->flatBindings());
+var_dump($db);
+
+
+$db = (new Create())->from("users")->create([
+    'email' => generateRandomString()."@teste.com",
+    'last_name' => generateRandomString()
+])->exec();
+
+var_dump($db);
