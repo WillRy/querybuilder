@@ -2,14 +2,8 @@
 
 namespace Willry\QueryBuilder;
 
-use Exception;
-use PDOStatement;
-use stdClass;
-
 class Delete extends Base
 {
-
-
     protected function mountQuery(): void
     {
         $this->query = "DELETE FROM {$this->entity} {$this->where}";

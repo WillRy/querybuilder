@@ -2,10 +2,6 @@
 
 namespace Willry\QueryBuilder;
 
-use Exception;
-use PDOStatement;
-use stdClass;
-
 class Query extends Base
 {
 
@@ -26,7 +22,6 @@ class Query extends Base
         return $this;
     }
 
-
     /**
      * @param string $columnOrder
      */
@@ -36,7 +31,6 @@ class Query extends Base
         $this->setBindings([$columnOrder], 'order');
         return $this;
     }
-
 
     /**
      * @param array $group
@@ -60,13 +54,30 @@ class Query extends Base
         return $this;
     }
 
+    /**
+     * @param int $limit
+     */
+    public function limit(int $limit): static
+    {
+        $this->limit = "LIMIT $limit";
+        return $this;
+    }
+
+    /**
+     * @param int $offset
+     * @return DB
+     */
+    public function offset(int $offset): static
+    {
+        $this->offset = "OFFSET $offset";
+        return $this;
+    }
+
     public function get(): ?array
     {
         $this->mountQuery();
 
         try {
-            $this->type = self::TYPE_SELECT;
-
             $stmt = $this->db->prepare($this->query);
             QueryHelpers::bind($stmt, $this->flatBindings());
             $stmt->execute();
@@ -82,8 +93,6 @@ class Query extends Base
         $this->mountQuery();
 
         try {
-            $this->type = self::TYPE_SELECT;
-
             $stmt = $this->db->prepare($this->query);
             QueryHelpers::bind($stmt, $this->flatBindings());
             $stmt->execute();
@@ -103,8 +112,6 @@ class Query extends Base
         $this->mountQuery();
 
         try {
-            $this->type = self::TYPE_SELECT;
-
             $stmt = $this->db->prepare($this->query);
             QueryHelpers::bind($stmt, $this->flatBindings());
             $stmt->execute();

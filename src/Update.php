@@ -2,10 +2,6 @@
 
 namespace Willry\QueryBuilder;
 
-use Exception;
-use PDOStatement;
-use stdClass;
-
 class Update extends Base
 {
     protected function mountQuery(): void
@@ -25,9 +21,8 @@ class Update extends Base
      */
     public function update(array $data): static
     {
-        $this->type = self::TYPE_UPDATE;
-
         $this->setBindings(array_values($data), 'update');
+
         $this->fields = $data;
 
         return $this;

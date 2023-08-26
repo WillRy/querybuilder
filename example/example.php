@@ -8,7 +8,6 @@ require_once __DIR__ . "/helpers.php";
 
 use Willry\QueryBuilder\Connect;
 use Willry\QueryBuilder\Create;
-use Willry\QueryBuilder\DB;
 use Willry\QueryBuilder\Delete;
 use Willry\QueryBuilder\Query;
 use Willry\QueryBuilder\QueryHelpers;

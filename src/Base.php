@@ -86,20 +86,10 @@ class Base
         'unionOrder' => [],
     ];
 
-    public $type = "select";
-
     /**
      * @var array|null
      */
     protected $connectionConfig;
-
-    public const TYPE_SELECT = 'select';
-
-    public const TYPE_CREATE = 'create';
-
-    public const TYPE_UPDATE = 'update';
-
-    public const TYPE_DELETE = 'delete';
 
 
     public function __construct(string $connectionName = 'default', bool $regenerateConnection = false)
@@ -113,7 +103,6 @@ class Base
         $this->entity = $entity;
         return $this;
     }
-
 
     public function fromSubQuery($callback, string $alias = 'sub')
     {
@@ -130,7 +119,6 @@ class Base
     {
         $this->silentErrors = $silentErrors;
     }
-
 
     /**
      * @param string $where
@@ -193,27 +181,6 @@ class Base
         $this->where = "WHERE {$column} IN ($inString)";
         return $this;
     }
-
-
-    /**
-     * @param int $limit
-     */
-    public function limit(int $limit): static
-    {
-        $this->limit = "LIMIT $limit";
-        return $this;
-    }
-
-    /**
-     * @param int $offset
-     * @return DB
-     */
-    public function offset(int $offset): static
-    {
-        $this->offset = "OFFSET $offset";
-        return $this;
-    }
-
 
     public function getBindings()
     {
@@ -311,10 +278,6 @@ class Base
         return $this;
     }
 
-
-
-
-
     public function beginTransaction(): bool
     {
         return $this->db->beginTransaction();
@@ -325,7 +288,6 @@ class Base
     {
         return $this->db->commit();
     }
-
 
     public function rollback(): bool
     {
@@ -345,7 +307,6 @@ class Base
         $this->fail = $exception;
     }
 
-
     protected function mountQuery(): void
     {
 
@@ -353,10 +314,6 @@ class Base
         $columns = implode(',', $columns);
         $this->query = "SELECT $columns FROM $this->entity $this->joins $this->where $this->groupBy $this->having $this->order $this->limit $this->offset";
     }
-
-   
-
-
 
     public function dump(): array
     {
@@ -373,7 +330,6 @@ class Base
         $this->mountQuery();
         return $this->query;
     }
-
 
     public function flatBindings()
     {
