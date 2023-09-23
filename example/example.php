@@ -167,7 +167,7 @@ $create = (new Create())->from("users")
         'first_name' => 'fulano',
         'last_name' => 'qualquer' . generateRandomString(),
         "email" => "fulano" . generateRandomString() . "@fulano.com"
-    ]);
+    ])->exec();
 var_dump($create);
 
 /**
@@ -177,7 +177,7 @@ $update = (new Update())->from("users as u")
     ->where("id = ?", [$create])
     ->update([
         "email" => "fulano" . generateRandomString() . "@fulano.com"
-    ]);
+    ])->exec();
 var_dump($update);
 
 /**
@@ -250,22 +250,41 @@ $sql = (new Query())->from("users as u")
     ->toSQL();
 var_dump($sql);
 
-$sqlAndBindings = (new Query())->from("users as u")
-    ->select([
-        "u.id",
-        "count(ao.id) as qtd"
-    ])
-    ->join("app_orders as ao ON ao.user_id = u.id")
-    ->groupBy('u.id')
-    ->having("count(ao.id) > ?", [1])
+
+/**
+ * CREATE
+ */
+$create = (new Create())->from("users")
+    ->create([
+        'first_name' => 'fulano',
+        'last_name' => 'qualquer' . generateRandomString(),
+        "email" => "fulano" . generateRandomString() . "@fulano.com"
+    ])->dump();
+var_dump($create);
+
+/**
+ * UPDATE
+ */
+$update = (new Update())->from("users as u")
+    ->where("id = ?", [$create])
+    ->update([
+        "email" => "fulano" . generateRandomString() . "@fulano.com"
+    ])->dump();
+var_dump($update);
+
+/**
+ * DELETE
+ */
+$delete = (new Delete())->from("users as u")
+    ->where("id > ?", [56])
     ->dump();
-var_dump($sqlAndBindings);
+var_dump($delete);
 
 /**
  * Criar filtros de queries de forma dinamica, gerando a string dos "where" e um array com bind params
  */
 
-$urlFilter = 'a' ?? null;
+$urlFilter = filter_input(INPUT_GET, 'search', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
 $filtersArrReference = [];
 
