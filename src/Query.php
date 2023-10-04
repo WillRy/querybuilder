@@ -59,7 +59,8 @@ class Query extends Base
      */
     public function limit(int $limit): static
     {
-        $this->limit = "LIMIT $limit";
+        $this->limit = "LIMIT ?";
+        $this->setBindings([$limit], 'limit');
         return $this;
     }
 
@@ -69,7 +70,8 @@ class Query extends Base
      */
     public function offset(int $offset): static
     {
-        $this->offset = "OFFSET $offset";
+        $this->offset = "OFFSET ?";
+        $this->setBindings([$offset], 'offset');
         return $this;
     }
 

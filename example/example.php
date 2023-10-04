@@ -13,6 +13,8 @@ use Willry\QueryBuilder\Query;
 use Willry\QueryBuilder\QueryHelpers;
 use Willry\QueryBuilder\Update;
 
+
+
 /**
  * Informar um array onde a chave é o nome da conexão
  * e dentro vai os dados da conexão para o PDO
@@ -109,7 +111,7 @@ var_dump($data);
 $join = (new Query())
     ->from('users as u')
     ->selectRaw("u.id, u.first_name, u.email, ad.street as address")
-    ->leftJoin("address as ad ON ad.user_id = u.id and ad.street LIKE ?", ['%a%'])
+    ->leftJoin("address as ad", "ad.user_id = u.id and ad.street LIKE ?", ['%a%'])
     ->limit(3)
     ->get();
 var_dump($join);
@@ -229,7 +231,7 @@ $sql = (new Query())->from("users as u")
         "u.id",
         "count(ao.id) as qtd"
     ])
-    ->join("app_orders as ao ON ao.user_id = u.id")
+    ->join("app_orders as ao","ao.user_id = u.id")
     ->groupBy("u.id")
     ->having("count(ao.id) > ?", [1])
     ->get();
@@ -244,7 +246,7 @@ $sql = (new Query())->from("users as u")
         "u.id",
         "count(ao.id) as qtd"
     ])
-    ->join("app_orders as ao ON ao.user_id = u.id")
+    ->join("app_orders as ao", "ao.user_id = u.id")
     ->groupBy("u.id")
     ->having("count(ao.id) > ?", [1])
     ->toSQL();

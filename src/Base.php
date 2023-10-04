@@ -76,12 +76,12 @@ class Base
         'select' => [],
         'from' => [],
         'join' => [],
-        'create' => [],
-        'update' => [],
         'where' => [],
         'groupBy' => [],
         'having' => [],
         'order' => [],
+        'limit' => [],
+        'offset' => [],
         'union' => [],
         'unionOrder' => [],
     ];
@@ -202,13 +202,13 @@ class Base
      * @param string $join
      * @return $this
      */
-    public function leftJoin(string $join, array $params = []): static
+    public function leftJoin(string $table, string $join, array $params = []): static
     {
         $this->setBindings($params, 'join');
 
         $this->joins .= PHP_EOL;
 
-        $this->joins .= "LEFT JOIN $join";
+        $this->joins .= "LEFT JOIN {$table} ON {$join}";
 
         return $this;
     }
@@ -217,13 +217,13 @@ class Base
      * @param string $join
      * @return $this
      */
-    public function rightJoin(string $join, array $params = []): static
+    public function rightJoin(string $table, string $join, array $params = []): static
     {
         $this->setBindings($params, 'join');
 
         $this->joins .= PHP_EOL;
 
-        $this->joins .= "RIGHT JOIN $join";
+        $this->joins .= "RIGHT JOIN {$table} ON {$join}";
 
         return $this;
     }
@@ -232,13 +232,13 @@ class Base
      * @param string $join
      * @return $this
      */
-    public function join(string $join, array $params = []): static
+    public function join(string $table, string $join, array $params = []): static
     {
         $this->setBindings($params, 'join');
 
         $this->joins .= PHP_EOL;
 
-        $this->joins .= "INNER JOIN $join";
+        $this->joins .= "INNER JOIN {$table} ON {$join}";
         return $this;
     }
 

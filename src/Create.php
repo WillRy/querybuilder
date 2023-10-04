@@ -19,8 +19,6 @@ class Create extends Base
      */
     public function create(array $data): static
     {
-        $this->setBindings(array_values($data), 'create');
-
         $this->fields = $data;
 
         return $this;

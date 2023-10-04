@@ -21,8 +21,6 @@ class Update extends Base
      */
     public function update(array $data): static
     {
-        $this->setBindings(array_values($data), 'update');
-
         $this->fields = $data;
 
         return $this;
